@@ -11,10 +11,10 @@ services:
       - gis-network
     command: tail -f /dev/null
   db:
-    image: postgres:17
+    image: postgis/postgis:17-3.4
     container_name: db
     ports:
-      - "5433:5432"
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
