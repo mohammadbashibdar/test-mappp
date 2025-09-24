@@ -9,6 +9,9 @@ services:
     working_dir: /app
     networks:
       - gis-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command: tail -f /dev/null
   db:
     image: postgis/postgis:17-3.4
@@ -23,6 +26,9 @@ services:
       - db_data:/var/lib/postgresql/data
     networks:
       - gis-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
 networks:
   gis-network:

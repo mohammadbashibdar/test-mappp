@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIS Map Game - TMS Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css" type="text/css">
+    <style>
+        body {
+            font-family: 'Tahoma', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .map-container {
+            height: 600px;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .info-item {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .info-item strong {
+            color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ GIS Map Game - TMS Viewer</h1>
+            <p>نمایشگر نقشه با پشتیبانی از TMS و OpenLayers</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="layerSelect">انتخاب لایه:</label>
+                <select id="layerSelect">
+                    <option value="">در حال بارگذاری...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="zoomLevel">سطح زوم:</label>
+                <input type="range" id="zoomLevel" min="0" max="18" value="10" step="1">
+                <span id="zoomValue">10</span>
+            </div>
+
+            <div class="control-group">
+                <label for="tileFormat">فرمت تایل:</label>
+                <select id="tileFormat">
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPEG</option>
+                </select>
+            </div>
+
+            <button class="btn" id="refreshBtn">🔄 بروزرسانی</button>
+            <button class="btn" id="createLayerBtn">➕ ایجاد لایه</button>
+            <button class="btn" id="fullscreenBtn">🔍 تمام صفحه</button>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="info-panel" id="infoPanel">
+                <h3>اطلاعات نقشه</h3>
+                <div class="info-item">
+                    <strong>مختصات:</strong> <span id="coordinates">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>زوم:</strong> <span id="currentZoom">10</span>
+                </div>
+                <div class="info-item">
+                    <strong>لایه:</strong> <span id="currentLayer">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>تایل:</strong> <span id="tileInfo">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+    <script>
+        // متغیرهای سراسری
+        let map;
+        let currentLayer = null;
+        let layers = [];
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // مقداردهی اولیه
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeMap();
+            loadLayers();
+            setupEventListeners();
+        });
+
+        // مقداردهی نقشه
+        function initializeMap() {
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        title: 'OpenStreetMap',
+                        source: new ol.source.OSM()
+                    })
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([51.3890, 35.6892]), // تهران
+                    zoom: 10,
+                    projection: 'EPSG:3857'
+                })
+            });
+
+            // رویدادهای نقشه
+            map.on('pointermove', function (evt) {
+                const coordinate = ol.proj.toLonLat(evt.coordinate);
+                document.getElementById('coordinates').textContent =
+                    `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
+            });
+
+            map.getView().on('change:resolution', function () {
+                const zoom = Math.round(map.getView().getZoom());
+                document.getElementById('currentZoom').textContent = zoom;
+                document.getElementById('zoomValue').textContent = zoom;
+                document.getElementById('zoomLevel').value = zoom;
+            });
+        }
+
+        // بارگذاری لایه‌ها از دیتابیس
+        async function loadLayers() {
+            try {
+                // ابتدا جداول موجود را دریافت می‌کنیم
+                const tablesResponse = await fetch(`${API_BASE}/database/tables`);
+                if (!tablesResponse.ok) throw new Error('خطا در دریافت جداول دیتابیس');
+
+                const tables = await tablesResponse.json();
+
+                if (tables.length === 0) {
+                    showMessage('هیچ جدول جغرافیایی در دیتابیس یافت نشد', 'error');
+                    return;
+                }
+
+                // سپس لایه‌های TMS موجود را دریافت می‌کنیم
+                const layersResponse = await fetch(`${API_BASE}/database/layers`);
+                if (!layersResponse.ok) throw new Error('خطا در بارگذاری لایه‌ها');
+
+                layers = await layersResponse.json();
+                updateLayerSelect();
+
+                if (layers.length > 0) {
+                    showMessage(`لایه‌ها با موفقیت بارگذاری شدند (${layers.length} لایه)`, 'success');
+                } else {
+                    showMessage('هیچ لایه TMS یافت نشد. ابتدا لایه‌ای از جداول دیتابیس ایجاد کنید.', 'error');
+                }
+            } catch (error) {
+                console.error('خطا در بارگذاری لایه‌ها:', error);
+                showMessage('خطا در بارگذاری لایه‌ها: ' + error.message, 'error');
+            }
+        }
+
+        // به‌روزرسانی لیست لایه‌ها
+        function updateLayerSelect() {
+            const select = document.getElementById('layerSelect');
+            select.innerHTML = '<option value="">انتخاب لایه...</option>';
+
+            layers.forEach(layer => {
+                const option = document.createElement('option');
+                option.value = layer.id;
+                option.textContent = layer.title || layer.name;
+                select.appendChild(option);
+            });
+        }
+
+        // تنظیم رویدادها
+        function setupEventListeners() {
+            // تغییر لایه
+            document.getElementById('layerSelect').addEventListener('change', function () {
+                const layerId = this.value;
+                if (layerId) {
+                    loadTMSLayer(layerId);
+                } else {
+                    removeTMSLayer();
+                }
+            });
+
+            // تغییر زوم
+            document.getElementById('zoomLevel').addEventListener('input', function () {
+                const zoom = parseInt(this.value);
+                map.getView().setZoom(zoom);
+            });
+
+            // بروزرسانی
+            document.getElementById('refreshBtn').addEventListener('click', function () {
+                loadLayers();
+            });
+
+            // ایجاد لایه
+            document.getElementById('createLayerBtn').addEventListener('click', function () {
+                showCreateLayerDialog();
+            });
+
+            // تمام صفحه
+            document.getElementById('fullscreenBtn').addEventListener('click', function () {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    document.documentElement.requestFullscreen();
+                }
+            });
+        }
+
+        // بارگذاری لایه TMS
+        async function loadTMSLayer(layerId) {
+            try {
+                // حذف لایه قبلی
+                removeTMSLayer();
+
+                const layer = layers.find(l => l.id == layerId);
+                if (!layer) {
+                    throw new Error('لایه یافت نشد');
+                }
+
+                // ایجاد لایه TMS
+                const tmsLayer = new ol.layer.Tile({
+                    title: layer.title || layer.name,
+                    source: new ol.source.XYZ({
+                        url: `${API_BASE}/tms/${layerId}/{z}/{x}/{y}.png`,
+                        projection: 'EPSG:3857',
+                        tileSize: 256
+                    }),
+                    opacity: 0.8
+                });
+
+                map.addLayer(tmsLayer);
+                currentLayer = tmsLayer;
+
+                // به‌روزرسانی اطلاعات
+                document.getElementById('currentLayer').textContent = layer.title || layer.name;
+
+                // تنظیم مرکز نقشه اگر تعریف شده باشد
+                if (layer.center) {
+                    const center = ol.proj.fromLonLat([layer.center.lng, layer.center.lat]);
+                    map.getView().setCenter(center);
+                }
+
+                // تنظیم محدوده اگر تعریف شده باشد
+                if (layer.bounds) {
+                    const extent = ol.proj.transformExtent(
+                        [layer.bounds.minx, layer.bounds.miny, layer.bounds.maxx, layer.bounds.maxy],
+                        'EPSG:4326',
+                        'EPSG:3857'
+                    );
+                    map.getView().fit(extent);
+                }
+
+                showMessage('لایه با موفقیت بارگذاری شد', 'success');
+
+            } catch (error) {
+                console.error('خطا در بارگذاری لایه:', error);
+                showMessage('خطا در بارگذاری لایه: ' + error.message, 'error');
+            }
+        }
+
+        // حذف لایه TMS
+        function removeTMSLayer() {
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+                currentLayer = null;
+                document.getElementById('currentLayer').textContent = '-';
+            }
+        }
+
+        // نمایش پیام
+        function showMessage(message, type = 'info') {
+            // حذف پیام قبلی
+            const existingMessage = document.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            // ایجاد پیام جدید
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+
+            // اضافه کردن به صفحه
+            document.querySelector('.controls').appendChild(messageDiv);
+
+            // حذف خودکار بعد از 5 ثانیه
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // به‌روزرسانی اطلاعات تایل
+        function updateTileInfo() {
+            if (currentLayer) {
+                const view = map.getView();
+                const center = ol.proj.toLonLat(view.getCenter());
+                const zoom = Math.round(view.getZoom());
+
+                // محاسبه مختصات تایل
+                const tileCoord = ol.tilegrid.getForProjection(view.getProjection())
+                    .getTileCoordForCoordinateAndZ(ol.proj.fromLonLat(center), zoom);
+
+                if (tileCoord) {
+                    const [z, x, y] = tileCoord;
+                    document.getElementById('tileInfo').textContent = `Z:${z} X:${x} Y:${y}`;
+                }
+            }
+        }
+
+        // به‌روزرسانی اطلاعات تایل هنگام تغییر نقشه
+        map.getView().on('change', updateTileInfo);
+
+        // نمایش دیالوگ ایجاد لایه
+        async function showCreateLayerDialog() {
+            try {
+                // دریافت جداول موجود
+                const response = await fetch(`${API_BASE}/database/tables`);
+                if (!response.ok) throw new Error('خطا در دریافت جداول');
+
+                const tables = await response.json();
+
+                if (tables.length === 0) {
+                    showMessage('هیچ جدول جغرافیایی در دیتابیس یافت نشد', 'error');
+                    return;
+                }
+
+                // ایجاد دیالوگ
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                `;
+
+                dialog.innerHTML = `
+                    <div style="
+                        background: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        min-width: 400px;
+                        max-width: 500px;
+                    ">
+                        <h3 style="margin-top: 0;">ایجاد لایه جدید از دیتابیس</h3>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">انتخاب جدول:</label>
+                            <select id="tableSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">انتخاب جدول...</option>
+                                ${tables.map(table => `<option value="${table.name}">${table.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">نام لایه:</label>
+                            <input type="text" id="layerName" placeholder="نام لایه..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">عنوان لایه:</label>
+                            <input type="text" id="layerTitle" placeholder="عنوان لایه (اختیاری)..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        
+                        <div style="text-align: right; margin-top: 20px;">
+                            <button id="cancelBtn" class="btn" style="background: #ccc; margin-left: 10px;">لغو</button>
+                            <button id="createBtn" class="btn">ایجاد لایه</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(dialog);
+
+                // رویدادهای دیالوگ
+                document.getElementById('cancelBtn').onclick = () => {
+                    document.body.removeChild(dialog);
+                };
+
+                document.getElementById('createBtn').onclick = async () => {
+                    const tableName = document.getElementById('tableSelect').value;
+                    const layerName = document.getElementById('layerName').value;
+                    const layerTitle = document.getElementById('layerTitle').value;
+
+                    if (!tableName || !layerName) {
+                        showMessage('لطفاً جدول و نام لایه را انتخاب کنید', 'error');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`${API_BASE}/database/tables/${tableName}/create-layer`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                table_name: tableName,
+                                layer_name: layerName,
+                                title: layerTitle || null
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('خطا در ایجاد لایه');
+
+                        showMessage('لایه با موفقیت ایجاد شد', 'success');
+                        document.body.removeChild(dialog);
+                        loadLayers(); // بارگذاری مجدد لایه‌ها
+
+                    } catch (error) {
+                        showMessage('خطا در ایجاد لایه: ' + error.message, 'error');
+                    }
+                };
+
+            } catch (error) {
+                console.error('خطا در نمایش دیالوگ:', error);
+                showMessage('خطا در نمایش دیالوگ: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
