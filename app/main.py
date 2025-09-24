@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import tms, database
+from fastapi.staticfiles import StaticFiles
+from app.api.v1.endpoints import tms, database, direct_tms
 
 app = FastAPI(
     title="GIS Map Game Backend FastAPI",
@@ -25,6 +26,10 @@ app.add_middleware(
 # Include routers
 app.include_router(tms.router, prefix="/api/v1")
 app.include_router(database.router, prefix="/api/v1")
+app.include_router(direct_tms.router, prefix="/api/v1")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")

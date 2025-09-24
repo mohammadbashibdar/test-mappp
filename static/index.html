@@ -151,7 +151,10 @@
     <div class="container">
         <div class="header">
             <h1>🗺️ GIS Map Game - TMS Viewer</h1>
-            <p>نمایشگر نقشه با پشتیبانی از TMS و OpenLayers</p>
+            <p>نمایشگر نقشه آفلاین - داده‌ها از دیتابیس محلی بارگذاری می‌شوند</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <strong>🔌 حالت آفلاین:</strong> برنامه از دیتابیس PostgreSQL محلی (پورت 5434) استفاده می‌کند
+            </div>
         </div>
 
         <div class="controls">
@@ -177,7 +180,8 @@
             </div>
 
             <button class="btn" id="refreshBtn">🔄 بروزرسانی</button>
-            <button class="btn" id="createLayerBtn">➕ ایجاد لایه</button>
+            <button class="btn" id="loadAllLayersBtn">🗺️ همه لایه‌ها</button>
+            <button class="btn" id="clearLayersBtn">🗑️ پاک کردن لایه‌ها</button>
             <button class="btn" id="fullscreenBtn">🔍 تمام صفحه</button>
         </div>
 
@@ -221,14 +225,11 @@
             map = new ol.Map({
                 target: 'map',
                 layers: [
-                    new ol.layer.Tile({
-                        title: 'OpenStreetMap',
-                        source: new ol.source.OSM()
-                    })
+                    // بدون لایه base - فقط لایه‌های دیتابیس محلی نمایش داده می‌شوند
                 ],
                 view: new ol.View({
-                    center: ol.proj.fromLonLat([51.3890, 35.6892]), // تهران
-                    zoom: 10,
+                    center: ol.proj.fromLonLat([48.2, 13.9]), // خلیج فارس
+                    zoom: 8,
                     projection: 'EPSG:3857'
                 })
             });
@@ -251,7 +252,7 @@
         // بارگذاری لایه‌ها از دیتابیس
         async function loadLayers() {
             try {
-                // ابتدا جداول موجود را دریافت می‌کنیم
+                // دریافت جداول جغرافیایی موجود
                 const tablesResponse = await fetch(`${API_BASE}/database/tables`);
                 if (!tablesResponse.ok) throw new Error('خطا در دریافت جداول دیتابیس');
 
@@ -262,17 +263,24 @@
                     return;
                 }
 
-                // سپس لایه‌های TMS موجود را دریافت می‌کنیم
-                const layersResponse = await fetch(`${API_BASE}/database/layers`);
-                if (!layersResponse.ok) throw new Error('خطا در بارگذاری لایه‌ها');
+                // تبدیل جداول به لایه‌ها
+                layers = tables.map((table, index) => ({
+                    id: index + 1,
+                    name: table.name,
+                    title: `لایه ${table.name}`,
+                    description: `داده‌های جغرافیایی ${table.name}`,
+                    type: 'geographic'
+                }));
 
-                layers = await layersResponse.json();
                 updateLayerSelect();
 
+                // بارگذاری همه لایه‌ها به صورت همزمان
+                await loadAllLayers();
+
                 if (layers.length > 0) {
-                    showMessage(`لایه‌ها با موفقیت بارگذاری شدند (${layers.length} لایه)`, 'success');
+                    showMessage(`تمام لایه‌ها با موفقیت بارگذاری شدند (${layers.length} لایه)`, 'success');
                 } else {
-                    showMessage('هیچ لایه TMS یافت نشد. ابتدا لایه‌ای از جداول دیتابیس ایجاد کنید.', 'error');
+                    showMessage('هیچ جدول جغرافیایی یافت نشد', 'error');
                 }
             } catch (error) {
                 console.error('خطا در بارگذاری لایه‌ها:', error);
@@ -280,10 +288,68 @@
             }
         }
 
+        // بارگذاری همه لایه‌ها به صورت همزمان
+        async function loadAllLayers() {
+            try {
+                // حذف همه لایه‌های قبلی
+                removeAllTMSLayers();
+
+                // بارگذاری همه لایه‌ها
+                for (const layer of layers) {
+                    await loadSingleTMSLayer(layer);
+                }
+
+                showMessage(`همه ${layers.length} لایه بارگذاری شدند`, 'success');
+            } catch (error) {
+                console.error('خطا در بارگذاری همه لایه‌ها:', error);
+                showMessage('خطا در بارگذاری همه لایه‌ها: ' + error.message, 'error');
+            }
+        }
+
+        // بارگذاری یک لایه TMS
+        async function loadSingleTMSLayer(layer) {
+            try {
+                // ایجاد لایه TMS مستقیم
+                const tmsLayer = new ol.layer.Tile({
+                    title: layer.title || layer.name,
+                    source: new ol.source.XYZ({
+                        url: `${API_BASE}/direct-tms/tables/${layer.name}/{z}/{x}/{y}.png`,
+                        projection: 'EPSG:3857',
+                        tileSize: 256
+                    }),
+                    opacity: 0.8
+                });
+
+                map.addLayer(tmsLayer);
+
+                // ذخیره لایه برای مدیریت بعدی
+                if (!window.allTMSLayers) {
+                    window.allTMSLayers = [];
+                }
+                window.allTMSLayers.push(tmsLayer);
+
+                console.log(`لایه ${layer.name} بارگذاری شد`);
+            } catch (error) {
+                console.error(`خطا در بارگذاری لایه ${layer.name}:`, error);
+            }
+        }
+
+        // حذف همه لایه‌های TMS
+        function removeAllTMSLayers() {
+            if (window.allTMSLayers) {
+                window.allTMSLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                window.allTMSLayers = [];
+            }
+            currentLayer = null;
+            document.getElementById('currentLayer').textContent = 'همه لایه‌ها';
+        }
+
         // به‌روزرسانی لیست لایه‌ها
         function updateLayerSelect() {
             const select = document.getElementById('layerSelect');
-            select.innerHTML = '<option value="">انتخاب لایه...</option>';
+            select.innerHTML = '<option value="">همه لایه‌ها (بارگذاری شده)</option>';
 
             layers.forEach(layer => {
                 const option = document.createElement('option');
@@ -299,9 +365,16 @@
             document.getElementById('layerSelect').addEventListener('change', function () {
                 const layerId = this.value;
                 if (layerId) {
-                    loadTMSLayer(layerId);
+                    // بارگذاری لایه خاص
+                    const layer = layers.find(l => l.id == layerId);
+                    if (layer) {
+                        removeAllTMSLayers();
+                        loadSingleTMSLayer(layer);
+                        document.getElementById('currentLayer').textContent = layer.title || layer.name;
+                    }
                 } else {
-                    removeTMSLayer();
+                    // بارگذاری همه لایه‌ها
+                    loadAllLayers();
                 }
             });
 
@@ -316,9 +389,15 @@
                 loadLayers();
             });
 
-            // ایجاد لایه
-            document.getElementById('createLayerBtn').addEventListener('click', function () {
-                showCreateLayerDialog();
+            // بارگذاری همه لایه‌ها
+            document.getElementById('loadAllLayersBtn').addEventListener('click', function () {
+                loadAllLayers();
+            });
+
+            // پاک کردن همه لایه‌ها
+            document.getElementById('clearLayersBtn').addEventListener('click', function () {
+                removeAllTMSLayers();
+                showMessage('همه لایه‌ها پاک شدند', 'success');
             });
 
             // تمام صفحه
@@ -342,11 +421,11 @@
                     throw new Error('لایه یافت نشد');
                 }
 
-                // ایجاد لایه TMS
+                // ایجاد لایه TMS مستقیم
                 const tmsLayer = new ol.layer.Tile({
                     title: layer.title || layer.name,
                     source: new ol.source.XYZ({
-                        url: `${API_BASE}/tms/${layerId}/{z}/{x}/{y}.png`,
+                        url: `${API_BASE}/direct-tms/tables/${layer.name}/{z}/{x}/{y}.png`,
                         projection: 'EPSG:3857',
                         tileSize: 256
                     }),

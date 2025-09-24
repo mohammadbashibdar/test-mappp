@@ -6,7 +6,7 @@ import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "GIS Map Game Backend FastAPI"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db:5432/gis_backend"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5434/gis_backend")
     # تنظیمات برای داده‌های خلیج فارس
     PERSIAN_GULF_BOUNDS: Dict[str, float] = {
         "minx": 48.0,  # غربی‌ترین نقطه
