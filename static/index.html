@@ -68,6 +68,52 @@
             font-size: 14px;
         }
 
+        .layers-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .layer-item:hover {
+            background: #f0f0f0;
+        }
+
+        .layer-item.selected {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+
+        .layer-checkbox {
+            margin-left: 10px;
+            transform: scale(1.2);
+        }
+
+        .layer-name {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .layer-count {
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+        }
+
         .btn {
             background: #667eea;
             color: white;
@@ -159,16 +205,9 @@
 
         <div class="controls">
             <div class="control-group">
-                <label for="layerSelect">انتخاب لایه:</label>
-                <select id="layerSelect">
-                    <option value="">در حال بارگذاری...</option>
-                </select>
-            </div>
-
-            <div class="control-group">
                 <label for="zoomLevel">سطح زوم:</label>
-                <input type="range" id="zoomLevel" min="0" max="18" value="10" step="1">
-                <span id="zoomValue">10</span>
+                <input type="range" id="zoomLevel" min="0" max="18" value="9" step="1">
+                <span id="zoomValue">9</span>
             </div>
 
             <div class="control-group">
@@ -180,9 +219,18 @@
             </div>
 
             <button class="btn" id="refreshBtn">🔄 بروزرسانی</button>
-            <button class="btn" id="loadAllLayersBtn">🗺️ همه لایه‌ها</button>
-            <button class="btn" id="clearLayersBtn">🗑️ پاک کردن لایه‌ها</button>
+            <button class="btn" id="selectAllBtn">✅ همه</button>
+            <button class="btn" id="selectNoneBtn">❌ هیچ‌کدام</button>
             <button class="btn" id="fullscreenBtn">🔍 تمام صفحه</button>
+        </div>
+
+        <div class="control-group" style="margin-top: 15px;">
+            <label>لایه‌های موجود:</label>
+            <div class="layers-panel" id="layersPanel">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    در حال بارگذاری لایه‌ها...
+                </div>
+            </div>
         </div>
 
         <div class="map-container">
@@ -211,6 +259,8 @@
         let map;
         let currentLayer = null;
         let layers = [];
+        let selectedLayers = new Set(); // لایه‌های انتخاب شده
+        let layerObjects = new Map(); // نگاشت نام لایه به شیء OpenLayers
         const API_BASE = 'http://localhost:8000/api/v1';
 
         // مقداردهی اولیه
@@ -228,8 +278,8 @@
                     // بدون لایه base - فقط لایه‌های دیتابیس محلی نمایش داده می‌شوند
                 ],
                 view: new ol.View({
-                    center: ol.proj.fromLonLat([48.2, 13.9]), // خلیج فارس
-                    zoom: 8,
+                    center: ol.proj.fromLonLat([89.632, 9.925]), // مرکز واقعی همه داده‌ها
+                    zoom: 9,
                     projection: 'EPSG:3857'
                 })
             });
@@ -269,16 +319,15 @@
                     name: table.name,
                     title: `لایه ${table.name}`,
                     description: `داده‌های جغرافیایی ${table.name}`,
-                    type: 'geographic'
+                    type: 'geographic',
+                    feature_count: 0 // این مقدار بعداً از API دریافت می‌شود
                 }));
 
-                updateLayerSelect();
-
-                // بارگذاری همه لایه‌ها به صورت همزمان
-                await loadAllLayers();
+                updateLayersPanel();
+                updateCurrentLayerInfo();
 
                 if (layers.length > 0) {
-                    showMessage(`تمام لایه‌ها با موفقیت بارگذاری شدند (${layers.length} لایه)`, 'success');
+                    showMessage(`${layers.length} لایه با موفقیت بارگذاری شدند`, 'success');
                 } else {
                     showMessage('هیچ جدول جغرافیایی یافت نشد', 'error');
                 }
@@ -288,27 +337,15 @@
             }
         }
 
-        // بارگذاری همه لایه‌ها به صورت همزمان
-        async function loadAllLayers() {
-            try {
-                // حذف همه لایه‌های قبلی
-                removeAllTMSLayers();
-
-                // بارگذاری همه لایه‌ها
-                for (const layer of layers) {
-                    await loadSingleTMSLayer(layer);
-                }
-
-                showMessage(`همه ${layers.length} لایه بارگذاری شدند`, 'success');
-            } catch (error) {
-                console.error('خطا در بارگذاری همه لایه‌ها:', error);
-                showMessage('خطا در بارگذاری همه لایه‌ها: ' + error.message, 'error');
-            }
-        }
 
         // بارگذاری یک لایه TMS
         async function loadSingleTMSLayer(layer) {
             try {
+                // اگر لایه قبلاً بارگذاری شده، آن را حذف کن
+                if (layerObjects.has(layer.name)) {
+                    removeTMSLayer(layer.name);
+                }
+
                 // ایجاد لایه TMS مستقیم
                 const tmsLayer = new ol.layer.Tile({
                     title: layer.title || layer.name,
@@ -321,12 +358,7 @@
                 });
 
                 map.addLayer(tmsLayer);
-
-                // ذخیره لایه برای مدیریت بعدی
-                if (!window.allTMSLayers) {
-                    window.allTMSLayers = [];
-                }
-                window.allTMSLayers.push(tmsLayer);
+                layerObjects.set(layer.name, tmsLayer);
 
                 console.log(`لایه ${layer.name} بارگذاری شد`);
             } catch (error) {
@@ -334,49 +366,82 @@
             }
         }
 
-        // حذف همه لایه‌های TMS
-        function removeAllTMSLayers() {
-            if (window.allTMSLayers) {
-                window.allTMSLayers.forEach(layer => {
-                    map.removeLayer(layer);
-                });
-                window.allTMSLayers = [];
-            }
-            currentLayer = null;
-            document.getElementById('currentLayer').textContent = 'همه لایه‌ها';
-        }
 
-        // به‌روزرسانی لیست لایه‌ها
-        function updateLayerSelect() {
-            const select = document.getElementById('layerSelect');
-            select.innerHTML = '<option value="">همه لایه‌ها (بارگذاری شده)</option>';
+        // به‌روزرسانی پنل لایه‌ها
+        function updateLayersPanel() {
+            const panel = document.getElementById('layersPanel');
+            panel.innerHTML = '';
 
             layers.forEach(layer => {
-                const option = document.createElement('option');
-                option.value = layer.id;
-                option.textContent = layer.title || layer.name;
-                select.appendChild(option);
+                const layerItem = document.createElement('div');
+                layerItem.className = 'layer-item';
+                layerItem.dataset.layerName = layer.name;
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'layer-checkbox';
+                checkbox.checked = selectedLayers.has(layer.name);
+                checkbox.addEventListener('change', function () {
+                    toggleLayer(layer.name, this.checked);
+                });
+
+                const layerName = document.createElement('span');
+                layerName.className = 'layer-name';
+                layerName.textContent = layer.title || layer.name;
+
+                const layerCount = document.createElement('span');
+                layerCount.className = 'layer-count';
+                layerCount.textContent = `(${layer.feature_count || 0} ویژگی)`;
+
+                layerItem.appendChild(checkbox);
+                layerItem.appendChild(layerName);
+                layerItem.appendChild(layerCount);
+
+                if (selectedLayers.has(layer.name)) {
+                    layerItem.classList.add('selected');
+                }
+
+                panel.appendChild(layerItem);
             });
+        }
+
+        // تغییر وضعیت لایه
+        function toggleLayer(layerName, isSelected) {
+            if (isSelected) {
+                selectedLayers.add(layerName);
+                loadSingleTMSLayer({ name: layerName });
+            } else {
+                selectedLayers.delete(layerName);
+                removeTMSLayer(layerName);
+            }
+            updateCurrentLayerInfo();
+        }
+
+        // حذف لایه خاص
+        function removeTMSLayer(layerName) {
+            if (layerObjects.has(layerName)) {
+                const layer = layerObjects.get(layerName);
+                map.removeLayer(layer);
+                layerObjects.delete(layerName);
+            }
+        }
+
+        // به‌روزرسانی اطلاعات لایه فعلی
+        function updateCurrentLayerInfo() {
+            const selectedCount = selectedLayers.size;
+            const totalCount = layers.length;
+
+            if (selectedCount === 0) {
+                document.getElementById('currentLayer').textContent = 'هیچ لایه‌ای انتخاب نشده';
+            } else if (selectedCount === totalCount) {
+                document.getElementById('currentLayer').textContent = 'همه لایه‌ها';
+            } else {
+                document.getElementById('currentLayer').textContent = `${selectedCount} لایه انتخاب شده`;
+            }
         }
 
         // تنظیم رویدادها
         function setupEventListeners() {
-            // تغییر لایه
-            document.getElementById('layerSelect').addEventListener('change', function () {
-                const layerId = this.value;
-                if (layerId) {
-                    // بارگذاری لایه خاص
-                    const layer = layers.find(l => l.id == layerId);
-                    if (layer) {
-                        removeAllTMSLayers();
-                        loadSingleTMSLayer(layer);
-                        document.getElementById('currentLayer').textContent = layer.title || layer.name;
-                    }
-                } else {
-                    // بارگذاری همه لایه‌ها
-                    loadAllLayers();
-                }
-            });
 
             // تغییر زوم
             document.getElementById('zoomLevel').addEventListener('input', function () {
@@ -389,15 +454,27 @@
                 loadLayers();
             });
 
-            // بارگذاری همه لایه‌ها
-            document.getElementById('loadAllLayersBtn').addEventListener('click', function () {
-                loadAllLayers();
+            // انتخاب همه لایه‌ها
+            document.getElementById('selectAllBtn').addEventListener('click', function () {
+                layers.forEach(layer => {
+                    selectedLayers.add(layer.name);
+                    loadSingleTMSLayer({ name: layer.name });
+                });
+                updateLayersPanel();
+                updateCurrentLayerInfo();
+                showMessage('همه لایه‌ها انتخاب شدند', 'success');
             });
 
-            // پاک کردن همه لایه‌ها
-            document.getElementById('clearLayersBtn').addEventListener('click', function () {
-                removeAllTMSLayers();
-                showMessage('همه لایه‌ها پاک شدند', 'success');
+            // عدم انتخاب همه لایه‌ها
+            document.getElementById('selectNoneBtn').addEventListener('click', function () {
+                selectedLayers.clear();
+                layerObjects.forEach((layer, name) => {
+                    map.removeLayer(layer);
+                });
+                layerObjects.clear();
+                updateLayersPanel();
+                updateCurrentLayerInfo();
+                showMessage('همه لایه‌ها حذف شدند', 'success');
             });
 
             // تمام صفحه
