@@ -341,8 +341,11 @@
         // بارگذاری یک لایه TMS
         async function loadSingleTMSLayer(layer) {
             try {
+                console.log(`بارگذاری لایه ${layer.name}...`);
+
                 // اگر لایه قبلاً بارگذاری شده، آن را حذف کن
                 if (layerObjects.has(layer.name)) {
+                    console.log(`لایه ${layer.name} قبلاً وجود دارد، حذف می‌شود...`);
                     removeTMSLayer(layer.name);
                 }
 
@@ -360,7 +363,8 @@
                 map.addLayer(tmsLayer);
                 layerObjects.set(layer.name, tmsLayer);
 
-                console.log(`لایه ${layer.name} بارگذاری شد`);
+                console.log(`لایه ${layer.name} با موفقیت بارگذاری شد`);
+                console.log(`تعداد لایه‌های موجود در نقشه: ${map.getLayers().getLength()}`);
             } catch (error) {
                 console.error(`خطا در بارگذاری لایه ${layer.name}:`, error);
             }
@@ -407,22 +411,88 @@
 
         // تغییر وضعیت لایه
         function toggleLayer(layerName, isSelected) {
+            console.log(`تغییر وضعیت لایه ${layerName} به ${isSelected ? 'فعال' : 'غیرفعال'}`);
+
             if (isSelected) {
                 selectedLayers.add(layerName);
                 loadSingleTMSLayer({ name: layerName });
             } else {
                 selectedLayers.delete(layerName);
+                console.log(`حذف لایه ${layerName} از نقشه...`);
                 removeTMSLayer(layerName);
             }
+
+            // اگر هیچ لایه‌ای انتخاب نشده، همه لایه‌ها را پاک کن
+            if (selectedLayers.size === 0) {
+                console.log('هیچ لایه‌ای انتخاب نشده، پاک کردن همه لایه‌ها...');
+                clearAllMapLayers();
+            }
+
+            // به‌روزرسانی وضعیت visual لایه بدون بازسازی کل پنل
+            updateLayerItemState(layerName, isSelected);
             updateCurrentLayerInfo();
+        }
+
+        // به‌روزرسانی وضعیت visual یک لایه خاص
+        function updateLayerItemState(layerName, isSelected) {
+            const layerItem = document.querySelector(`[data-layer-name="${layerName}"]`);
+            if (layerItem) {
+                const checkbox = layerItem.querySelector('.layer-checkbox');
+                if (checkbox) {
+                    checkbox.checked = isSelected;
+                }
+
+                if (isSelected) {
+                    layerItem.classList.add('selected');
+                } else {
+                    layerItem.classList.remove('selected');
+                }
+            }
+        }
+
+        // حذف همه لایه‌ها از نقشه
+        function clearAllMapLayers() {
+            console.log('پاک کردن همه لایه‌ها از نقشه...');
+            console.log(`تعداد لایه‌های موجود در نقشه قبل از پاک کردن: ${map.getLayers().getLength()}`);
+
+            // حذف همه لایه‌ها از نقشه
+            const layers = map.getLayers().getArray();
+            layers.forEach((layer, index) => {
+                console.log(`حذف لایه ${index}: ${layer.get('title') || 'بدون عنوان'}`);
+                map.removeLayer(layer);
+            });
+
+            // پاک کردن layerObjects
+            layerObjects.clear();
+
+            // مجبور کردن نقشه به refresh
+            map.updateSize();
+            map.getView().setCenter(map.getView().getCenter());
+
+            console.log(`تعداد لایه‌های موجود در نقشه بعد از پاک کردن: ${map.getLayers().getLength()}`);
+            console.log('همه لایه‌ها از نقشه پاک شدند');
         }
 
         // حذف لایه خاص
         function removeTMSLayer(layerName) {
+            console.log(`تلاش برای حذف لایه ${layerName}...`);
+            console.log(`لایه‌های موجود در layerObjects:`, Array.from(layerObjects.keys()));
+            console.log(`تعداد لایه‌های موجود در نقشه قبل از حذف: ${map.getLayers().getLength()}`);
+
             if (layerObjects.has(layerName)) {
                 const layer = layerObjects.get(layerName);
-                map.removeLayer(layer);
-                layerObjects.delete(layerName);
+                console.log(`لایه ${layerName} پیدا شد، در حال حذف...`);
+
+                try {
+                    map.removeLayer(layer);
+                    layerObjects.delete(layerName);
+                    console.log(`لایه ${layerName} با موفقیت از نقشه حذف شد`);
+                    console.log(`تعداد لایه‌های موجود در نقشه بعد از حذف: ${map.getLayers().getLength()}`);
+                } catch (error) {
+                    console.error(`خطا در حذف لایه ${layerName}:`, error);
+                }
+            } else {
+                console.log(`لایه ${layerName} در layerObjects یافت نشد`);
             }
         }
 
@@ -457,22 +527,27 @@
             // انتخاب همه لایه‌ها
             document.getElementById('selectAllBtn').addEventListener('click', function () {
                 layers.forEach(layer => {
-                    selectedLayers.add(layer.name);
-                    loadSingleTMSLayer({ name: layer.name });
+                    if (!selectedLayers.has(layer.name)) {
+                        selectedLayers.add(layer.name);
+                        loadSingleTMSLayer({ name: layer.name });
+                        updateLayerItemState(layer.name, true);
+                    }
                 });
-                updateLayersPanel();
                 updateCurrentLayerInfo();
                 showMessage('همه لایه‌ها انتخاب شدند', 'success');
             });
 
             // عدم انتخاب همه لایه‌ها
             document.getElementById('selectNoneBtn').addEventListener('click', function () {
+                console.log('دکمه "هیچ‌کدام" کلیک شد');
                 selectedLayers.clear();
-                layerObjects.forEach((layer, name) => {
-                    map.removeLayer(layer);
+                clearAllMapLayers();
+
+                // به‌روزرسانی وضعیت visual همه لایه‌ها
+                layers.forEach(layer => {
+                    updateLayerItemState(layer.name, false);
                 });
-                layerObjects.clear();
-                updateLayersPanel();
+
                 updateCurrentLayerInfo();
                 showMessage('همه لایه‌ها حذف شدند', 'success');
             });
