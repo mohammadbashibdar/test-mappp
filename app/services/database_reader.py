@@ -52,16 +52,39 @@ class DatabaseReader:
     async def _is_geographic_table(self, table_name: str) -> bool:
         """بررسی اینکه آیا جدول شامل داده‌های جغرافیایی است"""
         try:
-            # بررسی وجود ستون geometry
+            # بررسی وجود ستون geometry با نام‌های مختلف
             query = text("""
                 SELECT column_name, data_type 
                 FROM information_schema.columns 
                 WHERE table_name = :table_name 
-                AND (data_type LIKE '%geometry%' OR data_type = 'USER-DEFINED' OR column_name LIKE '%geom%')
+                AND (
+                    data_type LIKE '%geometry%' 
+                    OR data_type = 'USER-DEFINED' 
+                    OR column_name LIKE '%geom%'
+                    OR column_name = 'geometry'
+                    OR column_name = 'the_geom'
+                )
             """)
             
             result = await self.db_session.execute(query, {"table_name": table_name})
-            return len(result.fetchall()) > 0
+            columns = result.fetchall()
+            
+            # اگر ستون geometry پیدا شد، بررسی کن که آیا واقعاً داده جغرافیایی دارد
+            if len(columns) > 0:
+                # بررسی وجود داده در ستون geometry
+                geom_column = columns[0].column_name
+                count_query = text(f"""
+                    SELECT COUNT(*) 
+                    FROM {table_name} 
+                    WHERE {geom_column} IS NOT NULL
+                """)
+                
+                count_result = await self.db_session.execute(count_query)
+                count = count_result.scalar()
+                
+                return count > 0
+            
+            return False
             
         except Exception as e:
             logger.error(f"خطا در بررسی جدول {table_name}: {str(e)}")

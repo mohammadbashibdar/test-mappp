@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<caris_registration version="3.0" generation="USER">
-  <coordinate_system>
-    <mapdef key="WRLDMERC" unit_name="Metres" unit_scale="1"/>
-  </coordinate_system>
-</caris_registration>
