@@ -4,97 +4,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIS Map Game - TMS Viewer</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css" type="text/css">
+    <title>نقشه GIS - سیستم مدیریت لایه‌ها</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Tahoma', Arial, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
             overflow: hidden;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
             padding: 20px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
             text-align: center;
         }
 
-        .header h1 {
-            margin: 0;
-            font-size: 2em;
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
         }
 
-        .header p {
-            margin: 10px 0 0 0;
+        .sidebar-header p {
+            font-size: 0.9rem;
             opacity: 0.9;
         }
 
-        .controls {
+        .sidebar-content {
+            flex: 1;
             padding: 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
+            overflow-y: auto;
         }
 
         .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
 
-        .control-group label {
-            font-weight: bold;
+        .control-group h3 {
             color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .control-group select,
-        .control-group input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 10px;
         }
 
-        .layers-panel {
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+
+        .layer-list {
             max-height: 300px;
             overflow-y: auto;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            background: #f9f9f9;
+            border-radius: 8px;
+            background: white;
         }
 
         .layer-item {
             display: flex;
             align-items: center;
-            padding: 8px;
-            margin: 4px 0;
-            background: white;
-            border-radius: 4px;
-            border: 1px solid #eee;
-            transition: background-color 0.2s;
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s ease;
         }
 
         .layer-item:hover {
-            background: #f0f0f0;
+            background-color: #f8f9fa;
         }
 
-        .layer-item.selected {
-            background: #e3f2fd;
-            border-color: #2196f3;
+        .layer-item:last-child {
+            border-bottom: none;
         }
 
         .layer-checkbox {
@@ -102,41 +150,41 @@
             transform: scale(1.2);
         }
 
-        .layer-name {
+        .layer-info {
             flex: 1;
-            font-size: 14px;
-            color: #333;
         }
 
-        .layer-count {
-            font-size: 12px;
+        .layer-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .layer-details {
+            font-size: 0.8rem;
             color: #666;
+        }
+
+        .layer-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
             margin-left: 10px;
         }
 
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
+        .status-active {
+            background-color: #4CAF50;
         }
 
-        .btn:hover {
-            background: #5a6fd8;
+        .status-inactive {
+            background-color: #f44336;
         }
 
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
+        /* Map Container */
         .map-container {
-            height: 600px;
+            flex: 1;
             position: relative;
+            background: #f0f0f0;
         }
 
         #map {
@@ -144,565 +192,665 @@
             height: 100%;
         }
 
-        .info-panel {
+        /* Map Controls */
+        .map-controls {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            min-width: 200px;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .info-panel h3 {
-            margin: 0 0 10px 0;
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        /* Map Info Panel */
+        .map-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            min-width: 300px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            font-weight: 600;
             color: #333;
         }
 
-        .info-item {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-
-        .info-item strong {
-            color: #667eea;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
+        .info-value {
             color: #666;
+            font-family: 'Courier New', monospace;
         }
 
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
+        /* Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
-        .success {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: white;
+            transform: scale(1.05);
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+                border-left: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .map-container {
+                height: 60vh;
+            }
+        }
+
+        /* Custom Scrollbar */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 3000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #f44336;
+        }
+
+        .notification.warning {
+            background: #ff9800;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🗺️ GIS Map Game - TMS Viewer</h1>
-            <p>نمایشگر نقشه آفلاین - داده‌ها از دیتابیس محلی بارگذاری می‌شوند</p>
-            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 4px; margin-top: 10px;">
-                <strong>🔌 حالت آفلاین:</strong> برنامه از دیتابیس PostgreSQL محلی (پورت 5434) استفاده می‌کند
-            </div>
-        </div>
-
-        <div class="controls">
-            <div class="control-group">
-                <label for="zoomLevel">سطح زوم:</label>
-                <input type="range" id="zoomLevel" min="0" max="18" value="9" step="1">
-                <span id="zoomValue">9</span>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-map"></i> سیستم نقشه GIS</h1>
+                <p>مدیریت لایه‌ها و نمایش نقشه</p>
             </div>
 
-            <div class="control-group">
-                <label for="tileFormat">فرمت تایل:</label>
-                <select id="tileFormat">
-                    <option value="png">PNG</option>
-                    <option value="jpg">JPEG</option>
-                </select>
-            </div>
+            <div class="sidebar-content">
+                <!-- Layer Management -->
+                <div class="control-group">
+                    <h3><i class="fas fa-layer-group"></i> مدیریت لایه‌ها</h3>
+                    <button class="btn btn-success" onclick="updateLayers()">
+                        <i class="fas fa-sync-alt"></i> بروزرسانی لایه‌ها
+                    </button>
+                    <button class="btn btn-info" onclick="selectAllLayers()">
+                        <i class="fas fa-check-square"></i> انتخاب همه
+                    </button>
+                    <button class="btn btn-warning" onclick="deselectAllLayers()">
+                        <i class="fas fa-square"></i> انتخاب هیچ‌کدام
+                    </button>
+                </div>
 
-            <button class="btn" id="refreshBtn">🔄 بروزرسانی</button>
-            <button class="btn" id="selectAllBtn">✅ همه</button>
-            <button class="btn" id="selectNoneBtn">❌ هیچ‌کدام</button>
-            <button class="btn" id="fullscreenBtn">🔍 تمام صفحه</button>
-        </div>
+                <!-- Layer List -->
+                <div class="control-group">
+                    <h3><i class="fas fa-list"></i> لیست لایه‌ها</h3>
+                    <div class="layer-list" id="layerList">
+                        <div style="text-align: center; padding: 20px; color: #666;">
+                            <i class="fas fa-spinner fa-spin"></i> در حال بارگذاری...
+                        </div>
+                    </div>
+                </div>
 
-        <div class="control-group" style="margin-top: 15px;">
-            <label>لایه‌های موجود:</label>
-            <div class="layers-panel" id="layersPanel">
-                <div style="text-align: center; color: #666; padding: 20px;">
-                    در حال بارگذاری لایه‌ها...
+                <!-- Map Controls -->
+                <div class="control-group">
+                    <h3><i class="fas fa-cog"></i> تنظیمات نقشه</h3>
+                    <button class="btn btn-info" onclick="toggleFullscreen()">
+                        <i class="fas fa-expand"></i> تمام صفحه
+                    </button>
+                    <button class="btn" onclick="resetMapView()">
+                        <i class="fas fa-home"></i> بازنشانی نقشه
+                    </button>
                 </div>
             </div>
         </div>
 
+        <!-- Map Container -->
         <div class="map-container">
             <div id="map"></div>
-            <div class="info-panel" id="infoPanel">
-                <h3>اطلاعات نقشه</h3>
-                <div class="info-item">
-                    <strong>مختصات:</strong> <span id="coordinates">-</span>
+
+            <!-- Zoom Controls -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="زوم در">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="zoom-btn" onclick="zoomOut()" title="زوم بیرون">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+
+            <!-- Map Controls -->
+            <div class="map-controls">
+                <button class="control-btn" onclick="toggleLayerPanel()" title="پنل لایه‌ها">
+                    <i class="fas fa-layer-group"></i>
+                </button>
+            </div>
+
+            <!-- Map Info Panel -->
+            <div class="map-info" id="mapInfo">
+                <div class="info-row">
+                    <span class="info-label">مختصات:</span>
+                    <span class="info-value" id="coordinates">-</span>
                 </div>
-                <div class="info-item">
-                    <strong>زوم:</strong> <span id="currentZoom">10</span>
+                <div class="info-row">
+                    <span class="info-label">سطح زوم:</span>
+                    <span class="info-value" id="zoomLevel">-</span>
                 </div>
-                <div class="info-item">
-                    <strong>لایه:</strong> <span id="currentLayer">-</span>
+                <div class="info-row">
+                    <span class="info-label">لایه فعال:</span>
+                    <span class="info-value" id="activeLayer">-</span>
                 </div>
-                <div class="info-item">
-                    <strong>تایل:</strong> <span id="tileInfo">-</span>
+                <div class="info-row">
+                    <span class="info-label">تایل:</span>
+                    <span class="info-value" id="tileInfo">-</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+    <!-- Loading Spinner -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // متغیرهای سراسری
+        // Global variables
         let map;
-        let currentLayer = null;
         let layers = [];
-        let selectedLayers = new Set(); // لایه‌های انتخاب شده
-        let layerObjects = new Map(); // نگاشت نام لایه به شیء OpenLayers
-        const API_BASE = 'http://localhost:8000/api/v1';
+        let selectedLayers = new Set();
+        let isFullscreen = false;
+        let sidebarVisible = true;
+        let mapLayers = {}; // Store Leaflet layers
 
-        // مقداردهی اولیه
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeMap();
+        // Initialize map
+        function initMap() {
+            console.log('Initializing map...');
+
+            // Create map centered on Iran
+            map = L.map('map').setView([35.6892, 51.3890], 8);
+
+            // Add a base layer from database for better map display
+            // This ensures the map is not empty and shows some data immediately
+            const baseLayer = L.tileLayer('http://localhost:8000/api/v1/direct-tms/tables/turkaman_map/{z}/{x}/{y}.png', {
+                attribution: 'Database Base Layer: turkaman_map',
+                minZoom: 0,
+                maxZoom: 18,
+                opacity: 0.7
+            });
+            baseLayer.addTo(map);
+
+            // Add event listeners
+            map.on('mousemove', updateMapInfo);
+            map.on('moveend', updateMapInfo);
+            map.on('zoomend', updateMapInfo);
+
+            console.log('Map initialized successfully');
+            // Load initial layers
             loadLayers();
-            setupEventListeners();
-        });
-
-        // مقداردهی نقشه
-        function initializeMap() {
-            map = new ol.Map({
-                target: 'map',
-                layers: [
-                    // بدون لایه base - فقط لایه‌های دیتابیس محلی نمایش داده می‌شوند
-                ],
-                view: new ol.View({
-                    center: ol.proj.fromLonLat([89.632, 9.925]), // مرکز واقعی همه داده‌ها
-                    zoom: 9,
-                    projection: 'EPSG:3857'
-                })
-            });
-
-            // رویدادهای نقشه
-            map.on('pointermove', function (evt) {
-                const coordinate = ol.proj.toLonLat(evt.coordinate);
-                document.getElementById('coordinates').textContent =
-                    `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
-            });
-
-            map.getView().on('change:resolution', function () {
-                const zoom = Math.round(map.getView().getZoom());
-                document.getElementById('currentZoom').textContent = zoom;
-                document.getElementById('zoomValue').textContent = zoom;
-                document.getElementById('zoomLevel').value = zoom;
-            });
         }
 
-        // بارگذاری لایه‌ها از دیتابیس
+        // Load layers from API
         async function loadLayers() {
             try {
-                // دریافت جداول جغرافیایی موجود
-                const tablesResponse = await fetch(`${API_BASE}/database/tables`);
-                if (!tablesResponse.ok) throw new Error('خطا در دریافت جداول دیتابیس');
+                showLoading(true);
+                console.log('Loading layers from API...');
 
-                const tables = await tablesResponse.json();
+                // Add timeout and better error handling
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-                if (tables.length === 0) {
-                    showMessage('هیچ جدول جغرافیایی در دیتابیس یافت نشد', 'error');
-                    return;
+                const response = await fetch('http://localhost:8000/api/v1/database/layers', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                console.log('API Response status:', response.status);
+                console.log('API Response headers:', response.headers);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`خطا در بارگذاری لایه‌ها: ${response.status} - ${errorText}`);
                 }
 
-                // تبدیل جداول به لایه‌ها
-                layers = tables.map((table, index) => ({
-                    id: index + 1,
-                    name: table.name,
-                    title: `لایه ${table.name}`,
-                    description: `داده‌های جغرافیایی ${table.name}`,
-                    type: 'geographic',
-                    feature_count: 0 // این مقدار بعداً از API دریافت می‌شود
-                }));
+                const data = await response.json();
+                console.log('Raw API Response:', data);
 
-                updateLayersPanel();
-                updateCurrentLayerInfo();
+                layers = Array.isArray(data) ? data : [];
+                console.log('Loaded layers:', layers.length);
+                console.log('Layers data:', layers);
 
-                if (layers.length > 0) {
-                    showMessage(`${layers.length} لایه با موفقیت بارگذاری شدند`, 'success');
+                // Filter only active layers
+                const activeLayers = layers.filter(layer => layer.is_active);
+                console.log('Active layers:', activeLayers.length);
+
+                renderLayerList();
+
+                // Auto-select important layers for better map display (excluding turkaman_map)
+                const availableLayers = activeLayers.filter(layer => layer.table_name !== 'turkaman_map');
+                if (availableLayers.length > 0) {
+                    // Select some important layers by name for better map display
+                    const importantLayerNames = ['beacons'];
+                    const layersToAutoSelect = availableLayers.filter(layer =>
+                        importantLayerNames.includes(layer.name) ||
+                        layer.name.includes('beacons')
+                    ).slice(0, 3); // Select up to 3 important layers
+
+                    layersToAutoSelect.forEach(layer => {
+                        selectedLayers.add(layer.id);
+                        addLayerToMap(layer);
+                    });
+                    console.log(`Auto-selected ${layersToAutoSelect.length} important layers:`, layersToAutoSelect.map(l => l.title));
+                }
+
+                showNotification(`${layers.length} لایه با موفقیت بارگذاری شدند (${activeLayers.length} فعال)`, 'success');
+            } catch (error) {
+                console.error('Error loading layers:', error);
+                if (error.name === 'AbortError') {
+                    showNotification('خطا: زمان بارگذاری لایه‌ها به پایان رسید', 'error');
                 } else {
-                    showMessage('هیچ جدول جغرافیایی یافت نشد', 'error');
+                    showNotification('خطا در بارگذاری لایه‌ها: ' + error.message, 'error');
                 }
-            } catch (error) {
-                console.error('خطا در بارگذاری لایه‌ها:', error);
-                showMessage('خطا در بارگذاری لایه‌ها: ' + error.message, 'error');
+                // Show empty state
+                const layerList = document.getElementById('layerList');
+                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i> خطا در بارگذاری لایه‌ها</div>';
+            } finally {
+                showLoading(false);
             }
         }
 
-
-        // بارگذاری یک لایه TMS
-        async function loadSingleTMSLayer(layer) {
+        // Update layers (refresh from API)
+        async function updateLayers() {
             try {
-                // اگر لایه قبلاً بارگذاری شده، آن را حذف کن
-                if (layerObjects.has(layer.name)) {
-                    removeTMSLayer(layer.name);
-                }
+                showLoading(true);
+                showNotification('در حال بروزرسانی لایه‌ها...', 'info');
 
-                // ایجاد لایه TMS مستقیم
-                const tmsLayer = new ol.layer.Tile({
-                    title: layer.title || layer.name,
-                    source: new ol.source.XYZ({
-                        url: `${API_BASE}/direct-tms/tables/${layer.name}/{z}/{x}/{y}.png`,
-                        projection: 'EPSG:3857',
-                        tileSize: 256
-                    }),
-                    opacity: 0.8
+                // Auto-create layers if needed
+                const autoCreateResponse = await fetch('http://localhost:8000/api/v1/database/layers/auto-create', {
+                    method: 'POST'
                 });
 
-                map.addLayer(tmsLayer);
-                layerObjects.set(layer.name, tmsLayer);
+                if (!autoCreateResponse.ok) {
+                    throw new Error('خطا در ایجاد خودکار لایه‌ها');
+                }
 
-                console.log(`لایه ${layer.name} بارگذاری شد`);
+                // Reload layers
+                await loadLayers();
             } catch (error) {
-                console.error(`خطا در بارگذاری لایه ${layer.name}:`, error);
+                console.error('Error updating layers:', error);
+                showNotification('خطا در بروزرسانی لایه‌ها: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
             }
         }
 
+        // Render layer list
+        function renderLayerList() {
+            const layerList = document.getElementById('layerList');
+            console.log('Rendering layer list with', layers.length, 'layers');
+            console.log('Selected layers:', Array.from(selectedLayers));
 
-        // به‌روزرسانی پنل لایه‌ها
-        function updateLayersPanel() {
-            const panel = document.getElementById('layersPanel');
-            panel.innerHTML = '';
+            // Filter out layers that use turkaman_map table (shown as base layer)
+            const filteredLayers = layers.filter(layer => layer.table_name !== 'turkaman_map');
 
-            layers.forEach(layer => {
-                const layerItem = document.createElement('div');
-                layerItem.className = 'layer-item';
-                layerItem.dataset.layerName = layer.name;
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'layer-checkbox';
-                checkbox.checked = selectedLayers.has(layer.name);
-                checkbox.addEventListener('change', function () {
-                    toggleLayer(layer.name, this.checked);
-                });
-
-                const layerName = document.createElement('span');
-                layerName.className = 'layer-name';
-                layerName.textContent = layer.title || layer.name;
-
-                const layerCount = document.createElement('span');
-                layerCount.className = 'layer-count';
-                layerCount.textContent = `(${layer.feature_count || 0} ویژگی)`;
-
-                layerItem.appendChild(checkbox);
-                layerItem.appendChild(layerName);
-                layerItem.appendChild(layerCount);
-
-                if (selectedLayers.has(layer.name)) {
-                    layerItem.classList.add('selected');
-                }
-
-                panel.appendChild(layerItem);
-            });
-        }
-
-        // تغییر وضعیت لایه
-        function toggleLayer(layerName, isSelected) {
-            if (isSelected) {
-                selectedLayers.add(layerName);
-                loadSingleTMSLayer({ name: layerName });
-            } else {
-                selectedLayers.delete(layerName);
-                removeTMSLayer(layerName);
-            }
-            updateCurrentLayerInfo();
-        }
-
-        // حذف لایه خاص
-        function removeTMSLayer(layerName) {
-            if (layerObjects.has(layerName)) {
-                const layer = layerObjects.get(layerName);
-                map.removeLayer(layer);
-                layerObjects.delete(layerName);
-            }
-        }
-
-        // به‌روزرسانی اطلاعات لایه فعلی
-        function updateCurrentLayerInfo() {
-            const selectedCount = selectedLayers.size;
-            const totalCount = layers.length;
-
-            if (selectedCount === 0) {
-                document.getElementById('currentLayer').textContent = 'هیچ لایه‌ای انتخاب نشده';
-            } else if (selectedCount === totalCount) {
-                document.getElementById('currentLayer').textContent = 'همه لایه‌ها';
-            } else {
-                document.getElementById('currentLayer').textContent = `${selectedCount} لایه انتخاب شده`;
-            }
-        }
-
-        // تنظیم رویدادها
-        function setupEventListeners() {
-
-            // تغییر زوم
-            document.getElementById('zoomLevel').addEventListener('input', function () {
-                const zoom = parseInt(this.value);
-                map.getView().setZoom(zoom);
-            });
-
-            // بروزرسانی
-            document.getElementById('refreshBtn').addEventListener('click', function () {
-                loadLayers();
-            });
-
-            // انتخاب همه لایه‌ها
-            document.getElementById('selectAllBtn').addEventListener('click', function () {
-                layers.forEach(layer => {
-                    selectedLayers.add(layer.name);
-                    loadSingleTMSLayer({ name: layer.name });
-                });
-                updateLayersPanel();
-                updateCurrentLayerInfo();
-                showMessage('همه لایه‌ها انتخاب شدند', 'success');
-            });
-
-            // عدم انتخاب همه لایه‌ها
-            document.getElementById('selectNoneBtn').addEventListener('click', function () {
-                selectedLayers.clear();
-                layerObjects.forEach((layer, name) => {
-                    map.removeLayer(layer);
-                });
-                layerObjects.clear();
-                updateLayersPanel();
-                updateCurrentLayerInfo();
-                showMessage('همه لایه‌ها حذف شدند', 'success');
-            });
-
-            // تمام صفحه
-            document.getElementById('fullscreenBtn').addEventListener('click', function () {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                } else {
-                    document.documentElement.requestFullscreen();
-                }
-            });
-        }
-
-        // بارگذاری لایه TMS
-        async function loadTMSLayer(layerId) {
-            try {
-                // حذف لایه قبلی
-                removeTMSLayer();
-
-                const layer = layers.find(l => l.id == layerId);
-                if (!layer) {
-                    throw new Error('لایه یافت نشد');
-                }
-
-                // ایجاد لایه TMS مستقیم
-                const tmsLayer = new ol.layer.Tile({
-                    title: layer.title || layer.name,
-                    source: new ol.source.XYZ({
-                        url: `${API_BASE}/direct-tms/tables/${layer.name}/{z}/{x}/{y}.png`,
-                        projection: 'EPSG:3857',
-                        tileSize: 256
-                    }),
-                    opacity: 0.8
-                });
-
-                map.addLayer(tmsLayer);
-                currentLayer = tmsLayer;
-
-                // به‌روزرسانی اطلاعات
-                document.getElementById('currentLayer').textContent = layer.title || layer.name;
-
-                // تنظیم مرکز نقشه اگر تعریف شده باشد
-                if (layer.center) {
-                    const center = ol.proj.fromLonLat([layer.center.lng, layer.center.lat]);
-                    map.getView().setCenter(center);
-                }
-
-                // تنظیم محدوده اگر تعریف شده باشد
-                if (layer.bounds) {
-                    const extent = ol.proj.transformExtent(
-                        [layer.bounds.minx, layer.bounds.miny, layer.bounds.maxx, layer.bounds.maxy],
-                        'EPSG:4326',
-                        'EPSG:3857'
-                    );
-                    map.getView().fit(extent);
-                }
-
-                showMessage('لایه با موفقیت بارگذاری شد', 'success');
-
-            } catch (error) {
-                console.error('خطا در بارگذاری لایه:', error);
-                showMessage('خطا در بارگذاری لایه: ' + error.message, 'error');
-            }
-        }
-
-        // حذف لایه TMS
-        function removeTMSLayer() {
-            if (currentLayer) {
-                map.removeLayer(currentLayer);
-                currentLayer = null;
-                document.getElementById('currentLayer').textContent = '-';
-            }
-        }
-
-        // نمایش پیام
-        function showMessage(message, type = 'info') {
-            // حذف پیام قبلی
-            const existingMessage = document.querySelector('.message');
-            if (existingMessage) {
-                existingMessage.remove();
+            if (filteredLayers.length === 0) {
+                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">هیچ لایه اضافی یافت نشد (turkaman_map به عنوان پس‌زمینه نمایش داده می‌شود)</div>';
+                return;
             }
 
-            // ایجاد پیام جدید
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            messageDiv.textContent = message;
+            layerList.innerHTML = filteredLayers.map(layer => {
+                const isSelected = selectedLayers.has(layer.id);
+                console.log(`Layer ${layer.id} (${layer.title || layer.name}): selected=${isSelected}, active=${layer.is_active}`);
 
-            // اضافه کردن به صفحه
-            document.querySelector('.controls').appendChild(messageDiv);
-
-            // حذف خودکار بعد از 5 ثانیه
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
-                }
-            }, 5000);
-        }
-
-        // به‌روزرسانی اطلاعات تایل
-        function updateTileInfo() {
-            if (currentLayer) {
-                const view = map.getView();
-                const center = ol.proj.toLonLat(view.getCenter());
-                const zoom = Math.round(view.getZoom());
-
-                // محاسبه مختصات تایل
-                const tileCoord = ol.tilegrid.getForProjection(view.getProjection())
-                    .getTileCoordForCoordinateAndZ(ol.proj.fromLonLat(center), zoom);
-
-                if (tileCoord) {
-                    const [z, x, y] = tileCoord;
-                    document.getElementById('tileInfo').textContent = `Z:${z} X:${x} Y:${y}`;
-                }
-            }
-        }
-
-        // به‌روزرسانی اطلاعات تایل هنگام تغییر نقشه
-        map.getView().on('change', updateTileInfo);
-
-        // نمایش دیالوگ ایجاد لایه
-        async function showCreateLayerDialog() {
-            try {
-                // دریافت جداول موجود
-                const response = await fetch(`${API_BASE}/database/tables`);
-                if (!response.ok) throw new Error('خطا در دریافت جداول');
-
-                const tables = await response.json();
-
-                if (tables.length === 0) {
-                    showMessage('هیچ جدول جغرافیایی در دیتابیس یافت نشد', 'error');
-                    return;
-                }
-
-                // ایجاد دیالوگ
-                const dialog = document.createElement('div');
-                dialog.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.5);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1000;
-                `;
-
-                dialog.innerHTML = `
-                    <div style="
-                        background: white;
-                        padding: 20px;
-                        border-radius: 8px;
-                        min-width: 400px;
-                        max-width: 500px;
-                    ">
-                        <h3 style="margin-top: 0;">ایجاد لایه جدید از دیتابیس</h3>
-                        
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">انتخاب جدول:</label>
-                            <select id="tableSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="">انتخاب جدول...</option>
-                                ${tables.map(table => `<option value="${table.name}">${table.name}</option>`).join('')}
-                            </select>
+                return `
+                <div class="layer-item">
+                    <input type="checkbox" 
+                           class="layer-checkbox" 
+                           id="layer-${layer.id}"
+                           ${isSelected ? 'checked' : ''}
+                           onchange="toggleLayer(${layer.id})"
+                           ${!layer.is_active ? 'disabled' : ''}>
+                    <div class="layer-info">
+                        <div class="layer-name">${layer.title || layer.name}</div>
+                        <div class="layer-details">
+                            ID: ${layer.id} | جدول: ${layer.table_name || 'نامشخص'} | زوم: ${layer.min_zoom || 0}-${layer.max_zoom || 18}
                         </div>
-                        
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">نام لایه:</label>
-                            <input type="text" id="layerName" placeholder="نام لایه..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">عنوان لایه:</label>
-                            <input type="text" id="layerTitle" placeholder="عنوان لایه (اختیاری)..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        
-                        <div style="text-align: right; margin-top: 20px;">
-                            <button id="cancelBtn" class="btn" style="background: #ccc; margin-left: 10px;">لغو</button>
-                            <button id="createBtn" class="btn">ایجاد لایه</button>
-                        </div>
+                        ${layer.description ? `<div class="layer-details" style="font-size: 0.7rem; color: #888;">${layer.description}</div>` : ''}
                     </div>
-                `;
+                    <div class="layer-status ${layer.is_active ? 'status-active' : 'status-inactive'}" title="${layer.is_active ? 'فعال' : 'غیرفعال'}"></div>
+                </div>
+            `;
+            }).join('');
 
-                document.body.appendChild(dialog);
+            console.log('Layer list rendered successfully');
+        }
 
-                // رویدادهای دیالوگ
-                document.getElementById('cancelBtn').onclick = () => {
-                    document.body.removeChild(dialog);
-                };
+        // Toggle layer visibility
+        function toggleLayer(layerId) {
+            console.log('Toggling layer:', layerId);
+            const checkbox = document.getElementById(`layer-${layerId}`);
+            const layer = layers.find(l => l.id === layerId);
 
-                document.getElementById('createBtn').onclick = async () => {
-                    const tableName = document.getElementById('tableSelect').value;
-                    const layerName = document.getElementById('layerName').value;
-                    const layerTitle = document.getElementById('layerTitle').value;
+            if (!layer) {
+                console.error('Layer not found:', layerId);
+                return;
+            }
 
-                    if (!tableName || !layerName) {
-                        showMessage('لطفاً جدول و نام لایه را انتخاب کنید', 'error');
-                        return;
-                    }
+            if (checkbox.checked) {
+                selectedLayers.add(layerId);
+                addLayerToMap(layer);
+            } else {
+                selectedLayers.delete(layerId);
+                removeLayerFromMap(layerId);
+            }
 
-                    try {
-                        const response = await fetch(`${API_BASE}/database/tables/${tableName}/create-layer`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                table_name: tableName,
-                                layer_name: layerName,
-                                title: layerTitle || null
-                            })
-                        });
+            updateMapInfo();
+        }
 
-                        if (!response.ok) throw new Error('خطا در ایجاد لایه');
+        // Add layer to map
+        function addLayerToMap(layer) {
+            console.log('Adding layer to map:', layer);
 
-                        showMessage('لایه با موفقیت ایجاد شد', 'success');
-                        document.body.removeChild(dialog);
-                        loadLayers(); // بارگذاری مجدد لایه‌ها
+            // Skip layers that use turkaman_map table as they're already shown in base layer
+            if (layer.table_name === 'turkaman_map') {
+                console.log('Skipping layer as it uses turkaman_map table (already shown in base layer)');
+                return;
+            }
 
-                    } catch (error) {
-                        showMessage('خطا در ایجاد لایه: ' + error.message, 'error');
-                    }
-                };
+            // Remove existing layer if any
+            removeLayerFromMap(layer.id);
 
-            } catch (error) {
-                console.error('خطا در نمایش دیالوگ:', error);
-                showMessage('خطا در نمایش دیالوگ: ' + error.message, 'error');
+            // Create TMS layer from database TMS layers
+            const tmsLayer = L.tileLayer(`http://localhost:8000/api/v1/direct-tms/tables/${layer.table_name}/{z}/{x}/{y}.png`, {
+                attribution: `Database Layer: ${layer.title || layer.name} | Table: ${layer.table_name}`,
+                minZoom: layer.min_zoom || 0,
+                maxZoom: layer.max_zoom || 18,
+                opacity: 0.8
+            });
+
+            // Add layer to map
+            tmsLayer.addTo(map);
+
+            // Store layer reference
+            mapLayers[layer.id] = tmsLayer;
+
+            console.log('Layer added to map:', layer.title || layer.name);
+
+            // Update map info
+            updateMapInfo();
+        }
+
+        // Remove layer from map
+        function removeLayerFromMap(layerId) {
+            if (mapLayers[layerId]) {
+                map.removeLayer(mapLayers[layerId]);
+                delete mapLayers[layerId];
+                console.log('Layer removed from map:', layerId);
             }
         }
+
+        // Select all layers
+        function selectAllLayers() {
+            console.log('Selecting all layers...');
+            layers.forEach(layer => {
+                if (layer.is_active && layer.table_name !== 'turkaman_map') {
+                    selectedLayers.add(layer.id);
+                    const checkbox = document.getElementById(`layer-${layer.id}`);
+                    if (checkbox) checkbox.checked = true;
+                    addLayerToMap(layer);
+                }
+            });
+            updateMapInfo();
+            showNotification(`${selectedLayers.size} لایه انتخاب شدند`, 'success');
+        }
+
+        // Deselect all layers
+        function deselectAllLayers() {
+            console.log('Deselecting all layers...');
+            const previousCount = selectedLayers.size;
+            selectedLayers.clear();
+            layers.forEach(layer => {
+                if (layer.table_name !== 'turkaman_map') {
+                    const checkbox = document.getElementById(`layer-${layer.id}`);
+                    if (checkbox) checkbox.checked = false;
+                    removeLayerFromMap(layer.id);
+                }
+            });
+            updateMapInfo();
+            showNotification(`${previousCount} لایه از انتخاب خارج شدند`, 'warning');
+        }
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!isFullscreen) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) {
+                    document.documentElement.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Handle fullscreen change
+        document.addEventListener('fullscreenchange', function () {
+            isFullscreen = !!document.fullscreenElement;
+        });
+
+        // Toggle layer panel
+        function toggleLayerPanel() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebarVisible = !sidebarVisible;
+            sidebar.style.display = sidebarVisible ? 'flex' : 'none';
+        }
+
+        // Zoom controls
+        function zoomIn() {
+            map.zoomIn();
+        }
+
+        function zoomOut() {
+            map.zoomOut();
+        }
+
+        // Reset map view
+        function resetMapView() {
+            map.setView([35.6892, 51.3890], 8);
+        }
+
+        // Update map information
+        function updateMapInfo() {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+
+            // Update coordinates
+            document.getElementById('coordinates').textContent =
+                `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
+
+            // Update zoom level
+            document.getElementById('zoomLevel').textContent = zoom.toString();
+
+            // Update active layer
+            const activeLayerCount = selectedLayers.size;
+            document.getElementById('activeLayer').textContent =
+                activeLayerCount > 0 ? `${activeLayerCount} لایه فعال` : 'هیچ لایه‌ای فعال نیست';
+
+            // Update tile info
+            try {
+                const tileSize = 256;
+                const n = Math.pow(2, zoom);
+                const x = Math.floor((center.lng + 180) / 360 * n);
+                const y = Math.floor((1 - Math.log(Math.tan(center.lat * Math.PI / 180) + 1 / Math.cos(center.lat * Math.PI / 180)) / Math.PI) / 2 * n);
+                document.getElementById('tileInfo').textContent = `Z:${zoom} X:${x} Y:${y}`;
+            } catch (error) {
+                document.getElementById('tileInfo').textContent = 'نامشخص';
+            }
+        }
+
+        // Show/hide loading
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function () {
+            initMap();
+        });
     </script>
 </body>
 
