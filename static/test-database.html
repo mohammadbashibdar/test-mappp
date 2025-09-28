@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست دیتابیس - فقط داده‌های دیتابیس</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #333;
+        }
+
+        .info {
+            margin: 10px 0;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .layer-info {
+            margin: 5px 0;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>تست دیتابیس - فقط داده‌های دیتابیس شما</h1>
+    <div id="map"></div>
+    <div id="info" class="info">در حال بارگذاری...</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        console.log('شروع تست دیتابیس...');
+
+        let map;
+        let layers = [];
+        let mapLayers = {};
+
+        async function loadLayersFromDatabase() {
+            try {
+                console.log('بارگذاری لایه‌ها از دیتابیس...');
+                const response = await fetch('http://localhost:8000/api/v1/database/layers');
+
+                if (!response.ok) {
+                    throw new Error(`خطا در API: ${response.status}`);
+                }
+
+                const data = await response.json();
+                layers = Array.isArray(data) ? data : [];
+
+                console.log(`تعداد لایه‌های بارگذاری شده: ${layers.length}`);
+                console.log('لایه‌ها:', layers);
+
+                document.getElementById('info').innerHTML =
+                    `<div class="success">✅ ${layers.length} لایه از دیتابیس شما بارگذاری شد</div>`;
+
+                return true;
+            } catch (error) {
+                console.error('خطا در بارگذاری لایه‌ها:', error);
+                document.getElementById('info').innerHTML =
+                    `<div class="error">❌ خطا در بارگذاری لایه‌ها: ${error.message}</div>`;
+                return false;
+            }
+        }
+
+        function initMap() {
+            console.log('ایجاد نقشه...');
+            map = L.map('map').setView([35.6892, 51.3890], 8);
+
+            // فقط نقشه پایه (بدون لایه‌های خارجی)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            console.log('نقشه ایجاد شد');
+        }
+
+        function addDatabaseLayer(layer) {
+            console.log('اضافه کردن لایه از دیتابیس:', layer);
+
+            // حذف لایه قبلی اگر وجود دارد
+            if (mapLayers[layer.id]) {
+                map.removeLayer(mapLayers[layer.id]);
+            }
+
+            // ایجاد لایه از دیتابیس شما
+            const tmsLayer = L.tileLayer(`http://localhost:8000/api/v1/direct-tms/tables/${layer.table_name}/{z}/{x}/{y}.png`, {
+                attribution: `دیتابیس: ${layer.title || layer.name}`,
+                minZoom: layer.min_zoom || 0,
+                maxZoom: layer.max_zoom || 18,
+                opacity: 0.8
+            });
+
+            // اضافه کردن به نقشه
+            tmsLayer.addTo(map);
+            mapLayers[layer.id] = tmsLayer;
+
+            console.log(`لایه ${layer.title || layer.name} اضافه شد`);
+        }
+
+        function showLayerInfo() {
+            let info = '<h3>اطلاعات لایه‌های دیتابیس:</h3>';
+            layers.forEach(layer => {
+                info += `
+                    <div class="layer-info">
+                        <strong>${layer.title || layer.name}</strong><br>
+                        جدول: ${layer.table_name}<br>
+                        ID: ${layer.id}<br>
+                        وضعیت: ${layer.is_active ? 'فعال' : 'غیرفعال'}<br>
+                        زوم: ${layer.min_zoom || 0} - ${layer.max_zoom || 18}
+                    </div>
+                `;
+            });
+            document.getElementById('info').innerHTML += info;
+        }
+
+        async function runTest() {
+            console.log('شروع تست کامل...');
+
+            // بارگذاری لایه‌ها از دیتابیس
+            const loaded = await loadLayersFromDatabase();
+            if (!loaded) return;
+
+            // ایجاد نقشه
+            initMap();
+
+            // اضافه کردن 3 لایه اول از دیتابیس
+            const activeLayers = layers.filter(l => l.is_active);
+            const layersToAdd = activeLayers.slice(0, 3);
+
+            layersToAdd.forEach(layer => {
+                addDatabaseLayer(layer);
+            });
+
+            // نمایش اطلاعات
+            showLayerInfo();
+
+            console.log('تست کامل شد');
+        }
+
+        // شروع تست
+        document.addEventListener('DOMContentLoaded', runTest);
+    </script>
+</body>
+
+</html>

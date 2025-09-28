@@ -219,24 +219,32 @@ class DatabaseReader:
         self, 
         table_name: str, 
         tile_bounds: Tuple[float, float, float, float],
-        zoom_level: int
+        zoom_level: int,
+        filter_condition: str = None
     ) -> List[Dict[str, Any]]:
-        """دریافت داده‌های لایه برای تولید تایل"""
+        """دریافت داده‌های لایه برای تولید تایل با امکان فیلتر"""
         try:
             # تنظیم تعداد ویژگی‌ها بر اساس سطح زوم
             limit = min(1000, max(100, 2000 // (zoom_level + 1)))
             
             minx, miny, maxx, maxy = tile_bounds
             
+            # ساخت کوئری با فیلتر اختیاری
+            where_conditions = [
+                "ST_Intersects(geom, ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326))"
+            ]
+            
+            if filter_condition:
+                where_conditions.append(filter_condition)
+            
+            where_clause = " AND ".join(where_conditions)
+            
             query = text(f"""
                 SELECT 
                     ST_AsGeoJSON(geom) as geometry,
                     *
                 FROM {table_name}
-                WHERE ST_Intersects(
-                    geom, 
-                    ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)
-                )
+                WHERE {where_clause}
                 LIMIT :limit
             """)
             

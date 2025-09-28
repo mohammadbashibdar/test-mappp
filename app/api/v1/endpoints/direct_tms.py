@@ -80,12 +80,24 @@ async def _get_features_in_bounds(db: AsyncSession, table_name: str, bounds):
     """دریافت ویژگی‌ها در محدوده مشخص"""
     west, south, east, north = bounds
     
-    query = text(f"""
-        SELECT ST_AsGeoJSON(geom) as geometry, *
-        FROM {table_name}
-        WHERE ST_Intersects(geom, ST_MakeEnvelope(:west, :south, :east, :north, 4326))
-        LIMIT 1000
-    """)
+    # Check if bounds look like Web Mercator (EPSG:3857) coordinates
+    # Web Mercator bounds are typically very large numbers
+    if abs(west) > 180 or abs(east) > 180 or abs(south) > 90 or abs(north) > 90:
+        # These are likely Web Mercator coordinates, use EPSG:3857
+        query = text(f"""
+            SELECT ST_AsGeoJSON(ST_Transform(geom, 4326)) as geometry, *
+            FROM {table_name}
+            WHERE ST_Intersects(geom, ST_MakeEnvelope(:west, :south, :east, :north, 3857))
+            LIMIT 1000
+        """)
+    else:
+        # These are likely WGS84 coordinates, use EPSG:4326
+        query = text(f"""
+            SELECT ST_AsGeoJSON(geom) as geometry, *
+            FROM {table_name}
+            WHERE ST_Intersects(geom, ST_MakeEnvelope(:west, :south, :east, :north, 4326))
+            LIMIT 1000
+        """)
     
     result = await db.execute(query, {
         "west": west,
@@ -171,7 +183,9 @@ def _geometry_to_pixels(geometry, west: float, south: float, east: float, north:
     elif geometry.geom_type == 'LineString':
         return [transform_coords(coord) for coord in geometry.coords]
     elif geometry.geom_type == 'Polygon':
-        return [[transform_coords(coord) for coord in ring.coords] for ring in geometry.geoms]
+        return [[transform_coords(coord) for coord in geometry.exterior.coords]]
+    elif geometry.geom_type == 'MultiPolygon':
+        return [[[transform_coords(coord) for coord in poly.exterior.coords] for poly in geometry.geoms]]
     
     return []
 

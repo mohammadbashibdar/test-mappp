@@ -67,6 +67,7 @@ class TMSLayer(Base):
     description = Column(Text)
     source_layer_id = Column(Integer)  # Reference to shapefile layer
     table_name = Column(String(255))  # نام جدول در دیتابیس PostgreSQL
+    filter_condition = Column(Text)  # شرط فیلتر برای لایه مجازی
     min_zoom = Column(Integer, default=0)
     max_zoom = Column(Integer, default=18)
     bounds = Column(JSONB)

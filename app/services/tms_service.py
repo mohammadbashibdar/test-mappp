@@ -147,10 +147,13 @@ class TMSService:
             
             # دریافت داده‌ها از دیتابیس
             if hasattr(tms_layer, 'table_name') and tms_layer.table_name:
+                # استفاده از فیلتر اگر موجود باشد
+                filter_condition = getattr(tms_layer, 'filter_condition', None)
                 features = await self.db_reader.get_layer_data_for_tile(
                     tms_layer.table_name, 
                     tile_bounds, 
-                    z
+                    z,
+                    filter_condition
                 )
             else:
                 return self._create_empty_tile(format)

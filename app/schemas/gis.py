@@ -76,6 +76,8 @@ class TMSLayerBase(BaseModel):
     title: Optional[str] = Field(None, description="عنوان لایه")
     description: Optional[str] = Field(None, description="توضیحات لایه")
     source_layer_id: Optional[int] = Field(None, description="شناسه لایه منبع")
+    table_name: Optional[str] = Field(None, description="نام جدول در دیتابیس")
+    filter_condition: Optional[str] = Field(None, description="شرط فیلتر برای لایه مجازی")
     min_zoom: int = Field(0, description="حداقل سطح زوم")
     max_zoom: int = Field(18, description="حداکثر سطح زوم")
     bounds: Optional[Bounds] = Field(None, description="محدوده جغرافیایی")
