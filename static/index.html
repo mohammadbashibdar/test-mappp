@@ -1,12 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" dir="rtl">
+<html lang="en" dir="ltr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> GIS Map - Layers Management System</title>
+    <title>GIS Map - Advanced Layers Management System</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Leaflet Draw for drawing and annotation -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <!-- Leaflet Measure for measurement tools -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.13.0/dist/leaflet-geoman.css" />
+    <!-- Leaflet Browser Print for printing -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.browser.print/dist/leaflet.browser.print.min.css" />
+    <!-- Leaflet Bookmarks -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-bookmarks@1.1.0/Leaflet.Bookmarks.min.css" />
     <style>
         * {
             margin: 0;
@@ -16,175 +24,138 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f4f4f4;
             height: 100vh;
             overflow: hidden;
         }
 
+        /* Top Toolbar inspired by QGIS/ArcGIS Pro */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: #ffffff;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 2000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            margin-right: 15px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #333;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .tool-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .tool-btn.active {
+            background: #e0e0e0;
+        }
+
+        /* Container adjusted for toolbar */
         .container {
             display: flex;
             height: 100vh;
+            flex-direction: row;
         }
 
-        /* Sidebar */
+        /* Sidebar - Layers Panel on Left */
         .sidebar {
-            width: 350px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            width: 300px;
+            background: #ffffff;
+            border-right: 1px solid #ddd;
             display: flex;
             flex-direction: column;
-            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
             z-index: 1000;
         }
 
         .sidebar-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
+            padding: 15px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ddd;
             text-align: center;
-        }
-
-        .sidebar-header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-        }
-
-        .sidebar-header p {
-            font-size: 0.9rem;
-            opacity: 0.9;
+            font-weight: bold;
         }
 
         .sidebar-content {
             flex: 1;
-            padding: 20px;
             overflow-y: auto;
+            padding: 10px;
         }
 
         .control-group {
-            margin-bottom: 25px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
         }
 
         .control-group h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            justify-content: center;
+            font-size: 1rem;
             margin-bottom: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-        }
-
-        .btn-info {
-            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: #333;
         }
 
         .layer-list {
-            max-height: 300px;
-            overflow-y: auto;
             border: 1px solid #ddd;
-            border-radius: 8px;
             background: white;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .layer-item {
             display: flex;
             align-items: center;
-            padding: 12px 15px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
-            transition: background-color 0.2s ease;
-        }
-
-        .layer-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .layer-item:last-child {
-            border-bottom: none;
+            cursor: move;
         }
 
         .layer-checkbox {
-            margin-left: 10px;
-            transform: scale(1.2);
+            margin-right: 10px;
         }
 
         .layer-info {
             flex: 1;
         }
 
-        .layer-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 3px;
-        }
-
-        .layer-details {
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        .layer-status {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
+        .opacity-slider {
+            width: 60px;
             margin-left: 10px;
         }
 
-        .status-active {
-            background-color: #4CAF50;
+        .layer-actions {
+            display: flex;
+            gap: 5px;
         }
 
-        .status-inactive {
-            background-color: #f44336;
+        .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #666;
         }
 
         /* Map Container */
         .map-container {
             flex: 1;
             position: relative;
-            background: #f0f0f0;
         }
 
         #map {
@@ -192,102 +163,58 @@
             height: 100%;
         }
 
-        /* Map Controls */
-        .map-controls {
+        /* Bottom Status Bar */
+        .status-bar {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+            bottom: 0;
+            right: 0;
+            background: rgba(255,255,255,0.9);
+            padding: 5px 15px;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .control-btn {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: #333;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .control-btn:hover {
-            background: white;
-            transform: scale(1.1);
-        }
-
-        /* Map Info Panel */
-        .map-info {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            min-width: 300px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
+            gap: 20px;
             font-size: 0.9rem;
+            z-index: 1000;
+            border-top-left-radius: 5px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
         }
 
-        .info-label {
-            font-weight: 600;
+        .status-item {
             color: #333;
-        }
-
-        .info-value {
-            color: #666;
-            font-family: 'Courier New', monospace;
         }
 
         /* Zoom Controls */
-        .zoom-controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+        .leaflet-control-zoom {
+            top: 60px !important;
         }
 
-        .zoom-btn {
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: #333;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+        .leaflet-pm-toolbar {
+            margin-top: 50px !important; /* Adjust this value (e.g., 50px-100px) based on how much space you need to clear the zoom buttons */
+        }
+        .leaflet-top .leaflet-control {
+            margin-top: 0 !important; /* Set to 0 for no gap, or 5px for a small one */
+        }
+        /* Notification, Loading same as before */
+        .notification {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            z-index: 3000;
+            transition: opacity 0.3s;
+            opacity: 0;
         }
 
-        .zoom-btn:hover {
-            background: white;
-            transform: scale(1.05);
+        .notification.show {
+            opacity: 1;
         }
 
-        /* Loading Spinner */
+        .notification.error {
+            background: #f44336;
+        }
+
         .loading {
             display: none;
             position: absolute;
@@ -298,133 +225,94 @@
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                height: 40vh;
-                border-left: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            }
-
-            .map-container {
-                height: 60vh;
-            }
-        }
-
-        /* Custom Scrollbar */
-        .sidebar-content::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar-content::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        .sidebar-content::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-        }
-
-        .sidebar-content::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        /* Notification */
-        .notification {
+        /* Attribute Table Modal */
+        .modal {
+            display: none;
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
             z-index: 3000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
         }
 
-        .notification.show {
-            transform: translateX(0);
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            border-radius: 4px;
         }
 
-        .notification.error {
-            background: #f44336;
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
         }
 
-        .notification.warning {
-            background: #ff9800;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
         }
     </style>
 </head>
 
 <body>
+    <!-- Top Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="tool-btn" onclick="resetMapView()" title="Reset Map"><i class="fas fa-home"></i></button>
+            <button class="tool-btn" onclick="toggleMeasure()" title="Measure"><i class="fas fa-ruler"></i></button>
+            <button class="tool-btn" onclick="toggleDraw()" title="Draw"><i class="fas fa-pencil-alt"></i></button>
+            <button class="tool-btn" onclick="printMap()" title="Print/Export"><i class="fas fa-print"></i></button>
+            <button class="tool-btn" onclick="toggleIdentify()" title="Identify"><i class="fas fa-info-circle"></i></button>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h1><i class="fas fa-map"></i> Map system</h1>
-                <p>Layers Management and Map preview</p>
+                <i class="fas fa-map"></i> Map System
             </div>
-
             <div class="sidebar-content">
                 <!-- Layer Management -->
                 <div class="control-group">
                     <h3><i class="fas fa-layer-group"></i> Layers Management</h3>
-                    <button class="btn btn-success" onclick="updateLayers()">
-                        <i class="fas fa-sync-alt"></i> Update layers
-                    </button>
-                    <button class="btn btn-info" onclick="selectAllLayers()">
-                        <i class="fas fa-check-square"></i> Select All
-                    </button>
-                    <button class="btn btn-warning" onclick="deselectAllLayers()">
-                        <i class="fas fa-square"></i> Remove All
-                    </button>
+                    <button class="btn btn-success" onclick="updateLayers()"><i class="fas fa-sync-alt"></i> Update Layers</button>
+                    <button class="btn btn-info" onclick="selectAllLayers()"><i class="fas fa-check-square"></i> Select All</button>
+                    <button class="btn btn-warning" onclick="deselectAllLayers()"><i class="fas fa-square"></i> Deselect All</button>
                 </div>
-
                 <!-- Layer List -->
                 <div class="control-group">
-                    <h3><i class="fas fa-list"></i> Layers list</h3>
-                    <div class="layer-list" id="layerList">
-                        <div style="text-align: center; padding: 20px; color: #666;">
-                            <i class="fas fa-spinner fa-spin"></i> Loading...
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Map Controls -->
-                <div class="control-group">
-                    <h3><i class="fas fa-cog"></i> Map Setting</h3>
-                    <button class="btn btn-info" onclick="toggleFullscreen()">
-                        <i class="fas fa-expand"></i>  FullScreen
-                    </button>
-                    <button class="btn" onclick="resetMapView()">
-                        <i class="fas fa-home"></i> Reset Map
-                    </button>
+                    <h3><i class="fas fa-list"></i> Layers List</h3>
+                    <div class="layer-list" id="layerList"></div>
                 </div>
             </div>
         </div>
@@ -432,243 +320,166 @@
         <!-- Map Container -->
         <div class="map-container">
             <div id="map"></div>
-
-            <!-- Zoom Controls -->
-            <div class="zoom-controls">
-                <button class="zoom-btn" onclick="zoomIn()" title=" Zoom In">
-                    <i class="fas fa-plus"></i>
-                </button>
-                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
-                    <i class="fas fa-minus"></i>
-                </button>
+            <!-- Status Bar -->
+            <div class="status-bar" id="statusBar">
+                <span class="status-item" id="coordinates">Coordinate: -</span>
+                <span class="status-item" id="zoomLevel">Magnifier: -</span>
+                <span class="status-item" id="scale">Scale: -</span>
             </div>
-
-            <!-- Map Controls -->
-            <div class="map-controls">
-                <button class="control-btn" onclick="toggleLayerPanel()" title="Layers Panel ">
-                    <i class="fas fa-layer-group"></i>
-                </button>
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
             </div>
-
-        <!-- Map Info Panel -->
-            <div class="map-info" id="mapInfo" style="direction: ltr; text-align: left;">
-                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="info-label" style="text-align: left;">coordinate:</span>
-                    <span class="info-value" id="coordinates" style="text-align: right;">-</span>
-                </div>
-                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="info-label" style="text-align: left;">Magnifier:</span>
-                    <span class="info-value" id="zoomLevel" style="text-align: right;">-</span>
-                </div>
-                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="info-label" style="text-align: left;">Active Layer</span>
-                    <span class="info-value" id="activeLayer" style="text-align: right;">-</span>
-                </div>
-                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="info-label" style="text-align: left;">tile:</span>
-                    <span class="info-value" id="tileInfo" style="text-align: right;">-</span>
+            <!-- Notification -->
+            <div class="notification" id="notification"></div>
+            <!-- Attribute Modal -->
+            <div class="modal" id="attributeModal">
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h2>Attribute Table</h2>
+                    <table id="attributeTable"></table>
                 </div>
             </div>
- 
-
-    <!-- Loading Spinner -->
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
+        </div>
     </div>
-
-    <!-- Notification -->
-    <div class="notification" id="notification"></div>
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.13.0/dist/leaflet-geoman.min.js"></script>
+    <script src="https://unpkg.com/leaflet.browser.print/dist/leaflet.browser.print.min.js"></script>
+    <script src="https://unpkg.com/leaflet-bookmarks@1.1.0/Leaflet.Bookmarks.min.js"></script>
+    <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
         // Global variables
         let map;
         let layers = [];
         let selectedLayers = new Set();
-        let isFullscreen = false;
-        let sidebarVisible = true;
-        let mapLayers = {}; // Store Leaflet layers
+        let mapLayers = {};
+        let baseLayer;
+        let drawnItems;
+        let drawControl;
+        let measureControl;
+        let printControl;
+        let bookmarksControl;
+        let identifyActive = false;
 
         // Initialize map
         function initMap() {
-            console.log('Initializing map...');
+            map = L.map('map', {
+                rotate: true,
+                touchRotate: true,
+                rotateControl: {
+                    closeOnZeroBearing: false
+                },
+                zoomControl: false // Disable default zoom to position custom
+            }).setView([35.6892, 51.3890], 8);
 
-            // Create map centered on Iran
-            map = L.map('map').setView([35.6892, 51.3890], 8);
+            // Custom base layer only
+            baseLayer = L.tileLayer('http://localhost:8000/api/v1/direct-tms/tables/turkaman_map/{z}/{x}/{y}.png', {opacity: 0.7}).addTo(map);
 
-            // Add a base layer from database for better map display
-            // This ensures the map is not empty and shows some data immediately
-            const baseLayer = L.tileLayer('http://localhost:8000/api/v1/direct-tms/tables/turkaman_map/{z}/{x}/{y}.png', {
-                attribution: 'Database Base Layer: turkaman_map',
-                minZoom: 0,
-                maxZoom: 18,
-                opacity: 0.7
+            // Add custom zoom control below toolbar
+            L.control.zoom({position: 'topleft'}).addTo(map);
+
+            // Add rotate control
+            L.control.rotate({position: 'topleft'}).addTo(map);
+
+            // Add scale control
+            L.control.scale({position: 'bottomright'}).addTo(map);
+
+            // Drawing layer
+            drawnItems = L.featureGroup().addTo(map);
+            drawControl = new L.Control.Draw({
+                draw: {
+                    marker: true,
+                    polyline: true,
+                    polygon: true,
+                    rectangle: true,
+                    circle: false,
+                    circlemarker: false,
+                    text: true // For annotation
+                },
+                edit: {
+                    featureGroup: drawnItems
+                }
             });
-            baseLayer.addTo(map);
 
-            // Add event listeners
-            map.on('mousemove', updateMapInfo);
-            map.on('moveend', updateMapInfo);
-            map.on('zoomend', updateMapInfo);
+            // Measure (using Geoman for better measurement)
+            map.pm.addControls({
+                position: 'topleft',
+                drawControls: false,
+                editControls: false,
+                optionsControls: false,
+                customControls: true
+            });
+            // Adjust measure panel position via JS since CSS margin-top may not work
+            const pmToolbar = document.querySelector('.leaflet-pm-toolbar');
+            if (pmToolbar) {
+                pmToolbar.style.marginTop = '150px';
+            }
 
-            console.log('Map initialized successfully');
-            // Load initial layers
+            // Print
+            printControl = L.browserPrint({
+                title: 'Print Map',
+                printModes: ['Landscape', 'Portrait']
+            }).addTo(map);
+
+            // Bookmarks
+            bookmarksControl = new L.Control.Bookmarks({position: 'topright'}).addTo(map);
+
+            // Events
+            map.on('mousemove', updateStatus);
+            map.on('moveend', updateStatus);
+            map.on('zoomend', updateStatus);
+            map.on('click', handleIdentify);
+
+            // Load layers
             loadLayers();
+            updateStatus(); // Initial update
         }
+        
 
-        // Load layers from API
+        // Load layers (same as before, with enhancements)
         async function loadLayers() {
             try {
                 showLoading(true);
-                console.log('Loading layers from API...');
-
-                // Add timeout and better error handling
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-                const response = await fetch('http://localhost:8000/api/v1/database/layers', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-                console.log('API Response status:', response.status);
-                console.log('API Response headers:', response.headers);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error(`Error loading layers: ${response.status} - ${errorText}`);
-                }
-
-                const data = await response.json();
-                console.log('Raw API Response:', data);
-
-                layers = Array.isArray(data) ? data : [];
-                console.log('Loaded layers:', layers.length);
-                console.log('Layers data:', layers);
-
-                // Filter only active layers
-                const activeLayers = layers.filter(layer => layer.is_active);
-                console.log('Active layers:', activeLayers.length);
-
+                const response = await fetch('http://localhost:8000/api/v1/database/layers', {timeout: 10000});
+                if (!response.ok) throw new Error('Error loading layers');
+                layers = await response.json();
                 renderLayerList();
-
-                // Auto-select important layers for better map display (excluding turkaman_map)
-                const availableLayers = activeLayers.filter(layer => layer.table_name !== 'turkaman_map');
-                if (availableLayers.length > 0) {
-                    // Select some important layers by name for better map display
-                    const importantLayerNames = ['beacons'];
-                    const layersToAutoSelect = availableLayers.filter(layer =>
-                        importantLayerNames.includes(layer.name) ||
-                        layer.name.includes('beacons')
-                    ).slice(0, 3); // Select up to 3 important layers
-
-                    layersToAutoSelect.forEach(layer => {
-                        selectedLayers.add(layer.id);
-                        addLayerToMap(layer);
-                    });
-                    console.log(`Auto-selected ${layersToAutoSelect.length} important layers:`, layersToAutoSelect.map(l => l.title));
-                }
-
-                showNotification(`${layers.length} Layers Successfully Loaded (${activeLayers.length} Active)`, 'success');
+                showNotification(layers.length + ' layers loaded', 'success');
             } catch (error) {
-                console.error('Error loading layers:', error);
-                if (error.name === 'AbortError') {
-                    showNotification('Error: Timeout while loading layers', 'error');
-                } else {
-                    showNotification('Error loading layers: ' + error.message, 'error');
-                }
-                // Show empty state
-                const layerList = document.getElementById('layerList');
-                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i> Error loading layers</div>';
+                showNotification('Error loading layers: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
         }
 
-        // Update layers (refresh from API)
-        async function updateLayers() {
-            try {
-                showLoading(true);
-                showNotification('Updating layers...', 'info');
-
-                // Auto-create layers if needed
-                const autoCreateResponse = await fetch('http://localhost:8000/api/v1/database/layers/auto-create', {
-                    method: 'POST'
-                });
-
-                if (!autoCreateResponse.ok) {
-                    throw new Error('Error creating layers automatically');
-                }
-
-                // Reload layers
-                await loadLayers();
-            } catch (error) {
-                console.error('Error updating layers:', error);
-                showNotification('Error updating layers: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Render layer list
+        // Render layer list with opacity and actions
         function renderLayerList() {
             const layerList = document.getElementById('layerList');
-            console.log('Rendering layer list with', layers.length, 'layers');
-            console.log('Selected layers:', Array.from(selectedLayers));
-
-            // Filter out layers that use turkaman_map table (shown as base layer)
-            const filteredLayers = layers.filter(layer => layer.table_name !== 'turkaman_map');
-
-            if (filteredLayers.length === 0) {
-                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No additional layers found (turkaman_map Displayed as background)</div>';
-                return;
-            }
-
-            layerList.innerHTML = filteredLayers.map(layer => {
-                const isSelected = selectedLayers.has(layer.id);
-                console.log(`Layer ${layer.id} (${layer.title || layer.name}): selected=${isSelected}, active=${layer.is_active}`);
-
-                return `
-                <div class="layer-item">
-                    <input type="checkbox" 
-                           class="layer-checkbox" 
-                           id="layer-${layer.id}"
-                           ${isSelected ? 'checked' : ''}
-                           onchange="toggleLayer(${layer.id})"
-                           ${!layer.is_active ? 'disabled' : ''}>
-                    <div class="layer-info">
-                        <div class="layer-name">${layer.title || layer.name}</div>
-                        <div class="layer-details">
-                            ID: ${layer.id} | table: ${layer.table_name || 'unknown'} | zoom: ${layer.min_zoom || 0}-${layer.max_zoom || 18}
-                        </div>
-                        ${layer.description ? `<div class="layer-details" style="font-size: 0.7rem; color: #888;">${layer.description}</div>` : ''}
+            layerList.innerHTML = layers.map(layer => `
+                <div class="layer-item" data-id="${layer.id}">
+                    <input type="checkbox" class="layer-checkbox" id="layer-${layer.id}" ${selectedLayers.has(layer.id) ? 'checked' : ''} onchange="toggleLayer(${layer.id})" ${layer.is_active ? '' : 'disabled'}>
+                    <div class="layer-info">${layer.title || layer.name}</div>
+                    <input type="range" class="opacity-slider" min="0" max="1" step="0.01" value="0.8" onchange="setLayerOpacity(${layer.id}, this.value)">
+                    <div class="layer-actions">
+                        <button class="action-btn" onclick="showAttributeTable(${layer.id})" title="Attribute Table"><i class="fas fa-table"></i></button>
                     </div>
-                    <div class="layer-status ${layer.is_active ? 'status-active' : 'status-inactive'}" title="${layer.is_active ? 'Active' : 'Disabled'}"></div>
                 </div>
-            `;
-            }).join('');
+            `).join('');
 
-            console.log('Layer list rendered successfully');
+            // Make sortable
+            Sortable.create(layerList, {
+                handle: '.layer-item',
+                onEnd: updateLayerOrder
+            });
         }
 
-        // Toggle layer visibility
+        // Toggle layer
         function toggleLayer(layerId) {
-            console.log('Toggling layer:', layerId);
-            const checkbox = document.getElementById(`layer-${layerId}`);
             const layer = layers.find(l => l.id === layerId);
-
-            if (!layer) {
-                console.error('Layer not found:', layerId);
-                return;
-            }
-
+            const checkbox = document.getElementById(`layer-${layerId}`);
             if (checkbox.checked) {
                 selectedLayers.add(layerId);
                 addLayerToMap(layer);
@@ -676,41 +487,17 @@
                 selectedLayers.delete(layerId);
                 removeLayerFromMap(layerId);
             }
-
-            updateMapInfo();
+            updateStatus();
         }
 
         // Add layer to map
         function addLayerToMap(layer) {
-            console.log('Adding layer to map:', layer);
-
-            // Skip layers that use turkaman_map table as they're already shown in base layer
-            if (layer.table_name === 'turkaman_map') {
-                console.log('Skipping layer as it uses turkaman_map table (already shown in base layer)');
-                return;
-            }
-
-            // Remove existing layer if any
-            removeLayerFromMap(layer.id);
-
-            // Create TMS layer from database TMS layers
             const tmsLayer = L.tileLayer(`http://localhost:8000/api/v1/direct-tms/tables/${layer.table_name}/{z}/{x}/{y}.png`, {
-                attribution: `Database Layer: ${layer.title || layer.name} | Table: ${layer.table_name}`,
                 minZoom: layer.min_zoom || 0,
                 maxZoom: layer.max_zoom || 18,
                 opacity: 0.8
-            });
-
-            // Add layer to map
-            tmsLayer.addTo(map);
-
-            // Store layer reference
+            }).addTo(map);
             mapLayers[layer.id] = tmsLayer;
-
-            console.log('Layer added to map:', layer.title || layer.name);
-
-            // Update map info
-            updateMapInfo();
         }
 
         // Remove layer from map
@@ -718,138 +505,157 @@
             if (mapLayers[layerId]) {
                 map.removeLayer(mapLayers[layerId]);
                 delete mapLayers[layerId];
-                console.log('Layer removed from map:', layerId);
             }
         }
 
-        // Select all layers
+        // Set layer opacity
+        function setLayerOpacity(layerId, opacity) {
+            if (mapLayers[layerId]) {
+                mapLayers[layerId].setOpacity(opacity);
+            }
+        }
+
+        // Update layer order (z-index)
+        function updateLayerOrder() {
+            const items = document.querySelectorAll('.layer-item');
+            Array.from(items).reverse().forEach((item, index) => {
+                const layerId = parseInt(item.dataset.id);
+                if (mapLayers[layerId]) {
+                    mapLayers[layerId].setZIndex(index + 1);
+                }
+            });
+        }
+
+        // Select all
         function selectAllLayers() {
-            console.log('Selecting all layers...');
             layers.forEach(layer => {
-                if (layer.is_active && layer.table_name !== 'turkaman_map') {
+                if (layer.is_active) {
                     selectedLayers.add(layer.id);
-                    const checkbox = document.getElementById(`layer-${layer.id}`);
-                    if (checkbox) checkbox.checked = true;
+                    document.getElementById(`layer-${layer.id}`).checked = true;
                     addLayerToMap(layer);
                 }
             });
-            updateMapInfo();
-            showNotification(`${selectedLayers.size} Layers selected`, 'success');
+            updateStatus();
         }
 
-        // Deselect all layers
+        // Deselect all
         function deselectAllLayers() {
-            console.log('Deselecting all layers...');
-            const previousCount = selectedLayers.size;
+            selectedLayers.forEach(id => removeLayerFromMap(id));
             selectedLayers.clear();
             layers.forEach(layer => {
-                if (layer.table_name !== 'turkaman_map') {
-                    const checkbox = document.getElementById(`layer-${layer.id}`);
-                    if (checkbox) checkbox.checked = false;
-                    removeLayerFromMap(layer.id);
-                }
+                if (document.getElementById(`layer-${layer.id}`)) document.getElementById(`layer-${layer.id}`).checked = false;
             });
-            updateMapInfo();
-            showNotification(`${previousCount} Layers deselected`, 'warning');
+            updateStatus();
         }
 
-        // Toggle fullscreen
-        function toggleFullscreen() {
-            if (!isFullscreen) {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.webkitRequestFullscreen) {
-                    document.documentElement.webkitRequestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) {
-                    document.documentElement.msRequestFullscreen();
-                }
+        // Toggle measure (using Geoman measure)
+        function toggleMeasure() {
+            map.pm.toggleControls();
+        }
+
+        // Toggle draw
+        function toggleDraw() {
+            if (map.hasControl(drawControl)) {
+                map.removeControl(drawControl);
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
+                map.addControl(drawControl);
             }
         }
 
-        // Handle fullscreen change
-        document.addEventListener('fullscreenchange', function () {
-            isFullscreen = !!document.fullscreenElement;
-        });
-
-        // Toggle layer panel
-        function toggleLayerPanel() {
-            const sidebar = document.querySelector('.sidebar');
-            sidebarVisible = !sidebarVisible;
-            sidebar.style.display = sidebarVisible ? 'flex' : 'none';
+        // Print map
+        function printMap() {
+            printControl.print();
         }
 
-        // Zoom controls
-        function zoomIn() {
-            map.zoomIn();
+        // Toggle identify
+        function toggleIdentify() {
+            identifyActive = !identifyActive;
+            showNotification(identifyActive ? 'Identify mode activated' : 'Identify mode deactivated', 'info');
         }
 
-        function zoomOut() {
-            map.zoomOut();
+        // Handle identify click
+        function handleIdentify(e) {
+            if (identifyActive) {
+                // Placeholder: Query backend or show coord
+                // Assume endpoint /api/v1/query?lat={lat}&lng={lng}
+                fetch(`http://localhost:8000/api/v1/query?lat=${e.latlng.lat}&lng=${e.latlng.lng}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        L.popup().setLatLng(e.latlng).setContent(JSON.stringify(data || {message: 'No features found'})).openOn(map);
+                    })
+                    .catch(() => {
+                        L.popup().setLatLng(e.latlng).setContent('Coordinates: ' + e.latlng).openOn(map);
+                    });
+            }
         }
 
-        // Reset map view
+        // Show attribute table (placeholder, assume endpoint /api/v1/tables/{table_name})
+        async function showAttributeTable(layerId) {
+            const layer = layers.find(l => l.id === layerId);
+            try {
+                const res = await fetch(`http://localhost:8000/api/v1/tables/${layer.table_name}`);
+                const data = await res.json();
+                const table = document.getElementById('attributeTable');
+                if (data.length > 0) {
+                    const headers = Object.keys(data[0]);
+                    table.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${data.map(row => `<tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+                } else {
+                    table.innerHTML = '<tr><td>No data</td></tr>';
+                }
+                document.getElementById('attributeModal').style.display = 'block';
+            } catch (error) {
+                showNotification('Error loading attributes', 'error');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('attributeModal').style.display = 'none';
+        }
+
+        // Reset map
         function resetMapView() {
             map.setView([35.6892, 51.3890], 8);
+            map.setBearing(0);
         }
 
-        // Update map information
-        function updateMapInfo() {
-            const center = map.getCenter();
-            const zoom = map.getZoom();
-
-            // Update coordinates
-            document.getElementById('coordinates').textContent =
-                `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
-
-            // Update zoom level
-            document.getElementById('zoomLevel').textContent = zoom.toString();
-
-            // Update active layer
-            const activeLayerCount = selectedLayers.size;
-            document.getElementById('activeLayer').textContent =
-                activeLayerCount > 0 ? `${activeLayerCount} Active layer` : 'No layer is active';
-
-            // Update tile info
-            try {
-                const tileSize = 256;
-                const n = Math.pow(2, zoom);
-                const x = Math.floor((center.lng + 180) / 360 * n);
-                const y = Math.floor((1 - Math.log(Math.tan(center.lat * Math.PI / 180) + 1 / Math.cos(center.lat * Math.PI / 180)) / Math.PI) / 2 * n);
-                document.getElementById('tileInfo').textContent = `Z:${zoom} X:${x} Y:${y}`;
-            } catch (error) {
-                document.getElementById('tileInfo').textContent = 'Unknown';
+        // Update status bar
+        function updateStatus(e) {
+            let lat, lng;
+            if (e && e.latlng) {
+                lat = e.latlng.lat;
+                lng = e.latlng.lng;
+            } else {
+                const center = map.getCenter();
+                lat = center.lat;
+                lng = center.lng;
             }
+            document.getElementById('coordinates').textContent = `Coordinate: ${lng.toFixed(6)}, ${lat.toFixed(6)}`;
+
+            const zoom = map.getZoom();
+            document.getElementById('zoomLevel').textContent = `Magnifier: ${zoom}`;
+
+            // Scale approximate
+            const scale = Math.round(156543.03392804062 / Math.pow(2, zoom) * 1000); // Approx meters
+            document.getElementById('scale').textContent = `Scale: 1:${scale}`;
         }
 
-        // Show/hide loading
+        // Show loading
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
 
         // Show notification
         function showNotification(message, type = 'success') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type}`;
-            notification.classList.add('show');
-
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.className = `notification ${type}`;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
         }
 
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function () {
-            initMap();
-        });
+        // Init
+        document.addEventListener('DOMContentLoaded', initMap);
     </script>
 </body>
 
