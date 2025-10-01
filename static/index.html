@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نقشه GIS - سیستم مدیریت لایه‌ها</title>
+    <title> GIS Map - Layers Management System</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -387,43 +387,43 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h1><i class="fas fa-map"></i> سیستم نقشه GIS</h1>
-                <p>مدیریت لایه‌ها و نمایش نقشه</p>
+                <h1><i class="fas fa-map"></i> Map system</h1>
+                <p>Layers Management and Map preview</p>
             </div>
 
             <div class="sidebar-content">
                 <!-- Layer Management -->
                 <div class="control-group">
-                    <h3><i class="fas fa-layer-group"></i> مدیریت لایه‌ها</h3>
+                    <h3><i class="fas fa-layer-group"></i> Layers Management</h3>
                     <button class="btn btn-success" onclick="updateLayers()">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی لایه‌ها
+                        <i class="fas fa-sync-alt"></i> Update layers
                     </button>
                     <button class="btn btn-info" onclick="selectAllLayers()">
-                        <i class="fas fa-check-square"></i> انتخاب همه
+                        <i class="fas fa-check-square"></i> Select All
                     </button>
                     <button class="btn btn-warning" onclick="deselectAllLayers()">
-                        <i class="fas fa-square"></i> انتخاب هیچ‌کدام
+                        <i class="fas fa-square"></i> Remove All
                     </button>
                 </div>
 
                 <!-- Layer List -->
                 <div class="control-group">
-                    <h3><i class="fas fa-list"></i> لیست لایه‌ها</h3>
+                    <h3><i class="fas fa-list"></i> Layers list</h3>
                     <div class="layer-list" id="layerList">
                         <div style="text-align: center; padding: 20px; color: #666;">
-                            <i class="fas fa-spinner fa-spin"></i> در حال بارگذاری...
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
                         </div>
                     </div>
                 </div>
 
                 <!-- Map Controls -->
                 <div class="control-group">
-                    <h3><i class="fas fa-cog"></i> تنظیمات نقشه</h3>
+                    <h3><i class="fas fa-cog"></i> Map Setting</h3>
                     <button class="btn btn-info" onclick="toggleFullscreen()">
-                        <i class="fas fa-expand"></i> تمام صفحه
+                        <i class="fas fa-expand"></i>  FullScreen
                     </button>
                     <button class="btn" onclick="resetMapView()">
-                        <i class="fas fa-home"></i> بازنشانی نقشه
+                        <i class="fas fa-home"></i> Reset Map
                     </button>
                 </div>
             </div>
@@ -435,42 +435,41 @@
 
             <!-- Zoom Controls -->
             <div class="zoom-controls">
-                <button class="zoom-btn" onclick="zoomIn()" title="زوم در">
+                <button class="zoom-btn" onclick="zoomIn()" title=" Zoom In">
                     <i class="fas fa-plus"></i>
                 </button>
-                <button class="zoom-btn" onclick="zoomOut()" title="زوم بیرون">
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
                     <i class="fas fa-minus"></i>
                 </button>
             </div>
 
             <!-- Map Controls -->
             <div class="map-controls">
-                <button class="control-btn" onclick="toggleLayerPanel()" title="پنل لایه‌ها">
+                <button class="control-btn" onclick="toggleLayerPanel()" title="Layers Panel ">
                     <i class="fas fa-layer-group"></i>
                 </button>
             </div>
 
-            <!-- Map Info Panel -->
-            <div class="map-info" id="mapInfo">
-                <div class="info-row">
-                    <span class="info-label">مختصات:</span>
-                    <span class="info-value" id="coordinates">-</span>
+        <!-- Map Info Panel -->
+            <div class="map-info" id="mapInfo" style="direction: ltr; text-align: left;">
+                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="info-label" style="text-align: left;">coordinate:</span>
+                    <span class="info-value" id="coordinates" style="text-align: right;">-</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">سطح زوم:</span>
-                    <span class="info-value" id="zoomLevel">-</span>
+                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="info-label" style="text-align: left;">Magnifier:</span>
+                    <span class="info-value" id="zoomLevel" style="text-align: right;">-</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">لایه فعال:</span>
-                    <span class="info-value" id="activeLayer">-</span>
+                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="info-label" style="text-align: left;">Active Layer</span>
+                    <span class="info-value" id="activeLayer" style="text-align: right;">-</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">تایل:</span>
-                    <span class="info-value" id="tileInfo">-</span>
+                <div class="info-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="info-label" style="text-align: left;">tile:</span>
+                    <span class="info-value" id="tileInfo" style="text-align: right;">-</span>
                 </div>
             </div>
-        </div>
-    </div>
+ 
 
     <!-- Loading Spinner -->
     <div class="loading" id="loading">
@@ -544,7 +543,7 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API Error Response:', errorText);
-                    throw new Error(`خطا در بارگذاری لایه‌ها: ${response.status} - ${errorText}`);
+                    throw new Error(`Error loading layers: ${response.status} - ${errorText}`);
                 }
 
                 const data = await response.json();
@@ -577,17 +576,17 @@
                     console.log(`Auto-selected ${layersToAutoSelect.length} important layers:`, layersToAutoSelect.map(l => l.title));
                 }
 
-                showNotification(`${layers.length} لایه با موفقیت بارگذاری شدند (${activeLayers.length} فعال)`, 'success');
+                showNotification(`${layers.length} Layers Successfully Loaded (${activeLayers.length} Active)`, 'success');
             } catch (error) {
                 console.error('Error loading layers:', error);
                 if (error.name === 'AbortError') {
-                    showNotification('خطا: زمان بارگذاری لایه‌ها به پایان رسید', 'error');
+                    showNotification('Error: Timeout while loading layers', 'error');
                 } else {
-                    showNotification('خطا در بارگذاری لایه‌ها: ' + error.message, 'error');
+                    showNotification('Error loading layers: ' + error.message, 'error');
                 }
                 // Show empty state
                 const layerList = document.getElementById('layerList');
-                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i> خطا در بارگذاری لایه‌ها</div>';
+                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i> Error loading layers</div>';
             } finally {
                 showLoading(false);
             }
@@ -597,7 +596,7 @@
         async function updateLayers() {
             try {
                 showLoading(true);
-                showNotification('در حال بروزرسانی لایه‌ها...', 'info');
+                showNotification('Updating layers...', 'info');
 
                 // Auto-create layers if needed
                 const autoCreateResponse = await fetch('http://localhost:8000/api/v1/database/layers/auto-create', {
@@ -605,14 +604,14 @@
                 });
 
                 if (!autoCreateResponse.ok) {
-                    throw new Error('خطا در ایجاد خودکار لایه‌ها');
+                    throw new Error('Error creating layers automatically');
                 }
 
                 // Reload layers
                 await loadLayers();
             } catch (error) {
                 console.error('Error updating layers:', error);
-                showNotification('خطا در بروزرسانی لایه‌ها: ' + error.message, 'error');
+                showNotification('Error updating layers: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
@@ -628,7 +627,7 @@
             const filteredLayers = layers.filter(layer => layer.table_name !== 'turkaman_map');
 
             if (filteredLayers.length === 0) {
-                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">هیچ لایه اضافی یافت نشد (turkaman_map به عنوان پس‌زمینه نمایش داده می‌شود)</div>';
+                layerList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No additional layers found (turkaman_map Displayed as background)</div>';
                 return;
             }
 
@@ -647,11 +646,11 @@
                     <div class="layer-info">
                         <div class="layer-name">${layer.title || layer.name}</div>
                         <div class="layer-details">
-                            ID: ${layer.id} | جدول: ${layer.table_name || 'نامشخص'} | زوم: ${layer.min_zoom || 0}-${layer.max_zoom || 18}
+                            ID: ${layer.id} | table: ${layer.table_name || 'unknown'} | zoom: ${layer.min_zoom || 0}-${layer.max_zoom || 18}
                         </div>
                         ${layer.description ? `<div class="layer-details" style="font-size: 0.7rem; color: #888;">${layer.description}</div>` : ''}
                     </div>
-                    <div class="layer-status ${layer.is_active ? 'status-active' : 'status-inactive'}" title="${layer.is_active ? 'فعال' : 'غیرفعال'}"></div>
+                    <div class="layer-status ${layer.is_active ? 'status-active' : 'status-inactive'}" title="${layer.is_active ? 'Active' : 'Disabled'}"></div>
                 </div>
             `;
             }).join('');
@@ -735,7 +734,7 @@
                 }
             });
             updateMapInfo();
-            showNotification(`${selectedLayers.size} لایه انتخاب شدند`, 'success');
+            showNotification(`${selectedLayers.size} Layers selected`, 'success');
         }
 
         // Deselect all layers
@@ -751,7 +750,7 @@
                 }
             });
             updateMapInfo();
-            showNotification(`${previousCount} لایه از انتخاب خارج شدند`, 'warning');
+            showNotification(`${previousCount} Layers deselected`, 'warning');
         }
 
         // Toggle fullscreen
@@ -816,7 +815,7 @@
             // Update active layer
             const activeLayerCount = selectedLayers.size;
             document.getElementById('activeLayer').textContent =
-                activeLayerCount > 0 ? `${activeLayerCount} لایه فعال` : 'هیچ لایه‌ای فعال نیست';
+                activeLayerCount > 0 ? `${activeLayerCount} Active layer` : 'No layer is active';
 
             // Update tile info
             try {
@@ -826,7 +825,7 @@
                 const y = Math.floor((1 - Math.log(Math.tan(center.lat * Math.PI / 180) + 1 / Math.cos(center.lat * Math.PI / 180)) / Math.PI) / 2 * n);
                 document.getElementById('tileInfo').textContent = `Z:${zoom} X:${x} Y:${y}`;
             } catch (error) {
-                document.getElementById('tileInfo').textContent = 'نامشخص';
+                document.getElementById('tileInfo').textContent = 'Unknown';
             }
         }
 
